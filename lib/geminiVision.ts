@@ -1,4 +1,4 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GoogleGenAI } from "@google/genai";
 import type { VisionResult } from "@/lib/evaluate";
 import type { Mission } from "@/lib/missions";
 import { buildPrompt, schemaForMission } from "@/lib/prompts";
@@ -16,27 +16,29 @@ export async function verifyImageWithGemini({
   imageBase64,
   mimeType,
   apiKey,
-  modelName = "gemini-1.5-flash",
+  modelName = "gemini-2.5-flash",
 }: GeminiVisionInput): Promise<VisionResult> {
-  const genAI = new GoogleGenerativeAI(apiKey);
-  const model = genAI.getGenerativeModel({
+  const genAI = new GoogleGenAI({ apiKey });
+  const result = await genAI.models.generateContent({
     model: modelName,
-    generationConfig: {
+    contents: [
+      buildPrompt(mission),
+      {
+        inlineData: {
+          data: imageBase64,
+          mimeType,
+        },
+      },
+    ],
+    config: {
       responseMimeType: "application/json",
-      responseSchema: schemaForMission(mission) as never,
-      temperature: 0.1,
+      responseSchema: schemaForMission(mission),
     },
   });
 
-  const result = await model.generateContent([
-    buildPrompt(mission),
-    {
-      inlineData: {
-        data: imageBase64,
-        mimeType,
-      },
-    },
-  ]);
+  if (!result.text) {
+    throw new Error("Gemini returned no verification result.");
+  }
 
-  return JSON.parse(result.response.text()) as VisionResult;
+  return JSON.parse(result.text) as VisionResult;
 }
