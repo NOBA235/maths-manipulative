@@ -86,6 +86,7 @@ export type Mission = {
   instruction: string;
   challenge: string;
   materials: string[];
+  durationMinutes: number;
   predictionLabel: string;
   targetSpec: TargetSpec;
   evidence: EvidencePlan;
@@ -104,6 +105,7 @@ export const missions: Mission[] = [
       "Build two starting piles, then combine them to show how addition changes two parts into one total.",
     challenge: "Can you build 7 + 8 and find the total?",
     materials: ["15 small objects", "A clear table"],
+    durationMinutes: 3,
     predictionLabel: "How many objects will be in the combined group?",
     targetSpec: {
       kind: "count",
@@ -142,6 +144,7 @@ export const missions: Mission[] = [
       "Show the starting amount, then remove objects to demonstrate what remains after subtraction.",
     challenge: "Can you start with 15, take away 6, and leave 9?",
     materials: ["15 small objects", "A clear table"],
+    durationMinutes: 3,
     predictionLabel: "How many objects should be left?",
     targetSpec: {
       kind: "count",
@@ -180,6 +183,7 @@ export const missions: Mission[] = [
       "Count out the full set, then organize it into equal rows to demonstrate multiplication.",
     challenge: "Can you turn 24 objects into 6 neat rows of 4?",
     materials: ["24 small objects", "A clear table"],
+    durationMinutes: 4,
     predictionLabel: "How many objects will the grid have?",
     targetSpec: {
       kind: "array",
@@ -217,6 +221,7 @@ export const missions: Mission[] = [
       "Show the total first, then share it into equal groups to demonstrate division.",
     challenge: "Can you share 20 objects fairly between 4 groups?",
     materials: ["20 small objects", "A clear table"],
+    durationMinutes: 4,
     predictionLabel: "How many objects should be in each group?",
     targetSpec: {
       kind: "equalGroups",
@@ -254,6 +259,7 @@ export const missions: Mission[] = [
       "Show one whole, then divide it into four roughly equal parts to demonstrate fourths.",
     challenge: "Can you turn one whole into 4 fair parts?",
     materials: ["1 sheet of paper", "A clear table"],
+    durationMinutes: 5,
     predictionLabel: "What fraction is one part of the whole?",
     targetSpec: {
       kind: "fraction",
@@ -290,6 +296,7 @@ export const missions: Mission[] = [
       "Show the paper before folding, then create and reveal a right angle.",
     challenge: "Can you fold a square corner that makes a right angle?",
     materials: ["1 sheet of paper", "A clear table"],
+    durationMinutes: 4,
     predictionLabel: "About how many degrees is a right angle?",
     targetSpec: {
       kind: "angle",
@@ -327,6 +334,7 @@ export const missions: Mission[] = [
       "Estimate first, then align a ruler with the pencil to compare the estimate with a measured length.",
     challenge: "Can you estimate a pencil, then measure it in centimeters?",
     materials: ["1 pencil", "1 centimeter ruler"],
+    durationMinutes: 4,
     predictionLabel: "Your estimate in centimeters",
     targetSpec: {
       kind: "measurement",
@@ -364,6 +372,7 @@ export const missions: Mission[] = [
       "Show the full amount, then organize it into groups that can be skip-counted by five.",
     challenge: "Can you make 5 groups of 5 and count to 25?",
     materials: ["25 small objects", "A clear table"],
+    durationMinutes: 4,
     predictionLabel: "How many groups of 5 will make 25?",
     targetSpec: {
       kind: "equalGroups",

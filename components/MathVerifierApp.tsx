@@ -25,6 +25,7 @@ import {
   ShieldCheck,
   Sparkles,
   Star,
+  Timer,
   Trophy,
   X,
   Zap,
@@ -90,13 +91,13 @@ const conceptStyles: Record<Concept, string> = {
 };
 
 const conceptCardStyles: Record<Concept, string> = {
-  Addition: "border-lake/30 bg-[#f1f7ff]",
-  Subtraction: "border-coral/30 bg-[#fff5f7]",
-  Multiplication: "border-leaf/30 bg-[#f0fbf6]",
-  Division: "border-plum/30 bg-[#f7f3ff]",
-  Fractions: "border-saffron/50 bg-[#fffae8]",
-  Geometry: "border-ink/20 bg-white",
-  Measurement: "border-aqua/30 bg-[#f0fffe]",
+  Addition: "border-lake/25 bg-white hover:border-lake/60",
+  Subtraction: "border-coral/25 bg-white hover:border-coral/60",
+  Multiplication: "border-leaf/25 bg-white hover:border-leaf/60",
+  Division: "border-plum/25 bg-white hover:border-plum/60",
+  Fractions: "border-saffron/45 bg-white hover:border-saffron",
+  Geometry: "border-ink/15 bg-white hover:border-ink/45",
+  Measurement: "border-aqua/25 bg-white hover:border-aqua/60",
 };
 
 const conceptAccentStyles: Record<Concept, string> = {
@@ -548,6 +549,7 @@ function MissionList({
     <section className="space-y-7">
       <ExplorerBanner
         completed={completed}
+        progress={progress}
         nextMission={nextMission}
         onStart={() => onOpenMission(nextMission)}
       />
@@ -587,8 +589,11 @@ function MissionList({
                 whileHover={{ y: -6, rotate: index % 2 ? 0.8 : -0.8 }}
                 whileTap={{ y: 1, scale: 0.98 }}
                 onClick={() => onOpenMission(mission)}
-                className={`group flex min-h-[230px] flex-col overflow-hidden rounded-lg border p-4 text-left shadow-button transition-shadow hover:shadow-lift focus-visible:focus-ring ${conceptCardStyles[mission.concept]}`}
+                className={`group relative flex min-h-[244px] flex-col overflow-hidden rounded-lg border px-4 pb-4 pt-5 text-left shadow-button transition-shadow hover:shadow-lift focus-visible:focus-ring ${conceptCardStyles[mission.concept]}`}
               >
+                <div
+                  className={`absolute inset-x-0 top-0 h-1.5 ${conceptAccentStyles[mission.concept]}`}
+                />
                 <div className="flex items-start justify-between gap-3">
                   <motion.div
                     whileHover={{ rotate: [0, -8, 8, 0], scale: 1.08 }}
@@ -625,9 +630,15 @@ function MissionList({
                 </p>
 
                 <div className="mt-auto flex items-center justify-between gap-3 border-t border-ink/10 pt-3">
-                  <span className="flex items-center gap-1.5 text-xs font-black text-[#855f00]">
-                    <Star className="fill-saffron text-[#a87000]" size={16} />
-                    {mission.xp} XP
+                  <span className="flex items-center gap-3 text-xs font-black text-ink/55">
+                    <span className="flex items-center gap-1.5">
+                      <Timer size={15} />
+                      {mission.durationMinutes} min
+                    </span>
+                    <span className="flex items-center gap-1.5 text-[#855f00]">
+                      <Star className="fill-saffron text-[#a87000]" size={15} />
+                      {mission.xp}
+                    </span>
                   </span>
                   <span className="flex items-center gap-1 text-xs font-black text-ink/60">
                     {done ? "Replay" : "Start"}
@@ -648,14 +659,15 @@ function MissionList({
 
 function ExplorerBanner({
   completed,
+  progress,
   nextMission,
   onStart,
 }: {
   completed: number;
+  progress: ProgressState;
   nextMission: Mission;
   onStart: () => void;
 }) {
-  const percent = (completed / missions.length) * 100;
   const remaining = missions.length - completed;
 
   return (
@@ -691,17 +703,44 @@ function ExplorerBanner({
         <p className="mt-1 text-sm font-bold leading-5 text-ink/60">
           {remaining === 0
             ? "Every mission is mastered. Replay any challenge."
-            : `${remaining} mission${remaining === 1 ? "" : "s"} left on your trail.`}
+            : nextMission.challenge}
         </p>
 
         <div className="mt-4 max-w-xs">
-          <div className="h-3 overflow-hidden rounded-full border border-ink/10 bg-white/70">
-            <motion.div
-              initial={{ width: 0 }}
-              animate={{ width: `${percent}%` }}
-              transition={{ duration: 0.8, ease: "easeOut" }}
-              className="h-full bg-leaf"
-            />
+          <div className="flex items-center justify-between gap-2 text-xs font-black text-ink/55">
+            <span>
+              {completed}/{missions.length} missions complete
+            </span>
+            <span className="flex items-center gap-1 text-[#8b6200]">
+              <Timer size={14} />
+              {nextMission.durationMinutes} min
+            </span>
+          </div>
+          <div
+            aria-label={`${completed} of ${missions.length} missions complete`}
+            className="mt-2 grid grid-cols-8 gap-1.5"
+          >
+            {missions.map((mission, index) => {
+              const done = progress.missions[mission.id]?.correct;
+              const next = mission.id === nextMission.id && !done;
+
+              return (
+                <motion.span
+                  key={mission.id}
+                  initial={{ scaleX: 0 }}
+                  animate={{ scaleX: 1 }}
+                  transition={{ delay: index * 0.045, duration: 0.25 }}
+                  title={done ? `${mission.title} mastered` : mission.title}
+                  className={`h-2.5 rounded-sm border ${
+                    done
+                      ? "border-leaf bg-leaf"
+                      : next
+                        ? "border-ink bg-ink"
+                        : "border-ink/15 bg-white/75"
+                  }`}
+                />
+              );
+            })}
           </div>
           <button
             type="button"
@@ -770,8 +809,8 @@ function MissionDetail({
     Number(Boolean(evidenceFiles.setup)) + Number(Boolean(evidenceFiles.result));
 
   return (
-    <section className="mx-auto grid max-w-6xl gap-4 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
-      <div className="relative overflow-hidden rounded-lg border border-ink/10 bg-white p-4 shadow-lift sm:p-5">
+    <section className="mx-auto grid max-w-6xl gap-4 lg:grid-cols-[minmax(340px,0.85fr)_minmax(0,1.15fr)]">
+      <div className="relative overflow-hidden rounded-lg border border-ink/10 bg-white p-4 shadow-lift sm:p-5 lg:sticky lg:top-5 lg:self-start">
         <div
           className={`absolute inset-x-0 top-0 h-2 ${conceptAccentStyles[mission.concept]}`}
         />
@@ -795,6 +834,10 @@ function MissionDetail({
           </span>
           <span className="rounded-md bg-saffron/20 px-2.5 py-1 text-xs font-black text-[#7b5513]">
             {mission.xp} XP
+          </span>
+          <span className="flex items-center gap-1 rounded-md bg-ink/5 px-2.5 py-1 text-xs font-black text-ink/55">
+            <Timer size={14} />
+            {mission.durationMinutes} min
           </span>
           {completed ? (
             <span className="rounded-md bg-leaf/10 px-2.5 py-1 text-xs font-black text-leaf">
@@ -837,8 +880,9 @@ function MissionDetail({
           </ul>
         </div>
 
-        <div className="mt-6">
+        <div className="mt-6 flex items-center justify-between gap-3">
           <h3 className="text-sm font-black text-ink">Do These 2 Steps</h3>
+          <span className="text-xs font-bold text-ink/45">Show each step clearly</span>
         </div>
         <div className="mt-2 divide-y divide-ink/10 border-y border-ink/10">
           {(["setup", "result"] as EvidenceStage[]).map((stage, index) => (
@@ -996,18 +1040,19 @@ function EvidenceCapture({
             </h3>
           </div>
         </div>
-        <AnimatePresence>
-          {file ? (
-            <motion.div
-              initial={{ scale: 0, rotate: -18 }}
-              animate={{ scale: 1, rotate: 0 }}
-              exit={{ scale: 0 }}
-              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-leaf text-white shadow-sm"
-              title="Photo captured"
-            >
-              <Check size={18} strokeWidth={3} />
-            </motion.div>
-          ) : null}
+        <AnimatePresence mode="wait">
+          <motion.span
+            key={file ? "attached" : "ready"}
+            initial={{ opacity: 0, y: -4 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 4 }}
+            className={`flex shrink-0 items-center gap-1 rounded-md px-2 py-1 text-[10px] font-black uppercase tracking-[0.1em] ${
+              file ? "bg-leaf/15 text-leaf" : "bg-white/70 text-ink/45"
+            }`}
+          >
+            {file ? <Check size={13} strokeWidth={3} /> : <Camera size={13} />}
+            {file ? "Attached" : "Ready"}
+          </motion.span>
         </AnimatePresence>
       </div>
 
@@ -1036,6 +1081,12 @@ function EvidenceCapture({
             </p>
           </div>
         )}
+        {previewUrl && !checking ? (
+          <div className="absolute bottom-3 left-3 flex items-center gap-1.5 rounded-md bg-ink/85 px-2.5 py-1.5 text-xs font-black text-white shadow-sm">
+            <Check size={14} className="text-[#8ce0b6]" strokeWidth={3} />
+            Photo attached
+          </div>
+        ) : null}
         {checking && previewUrl ? (
           <>
             <div className="absolute inset-0 bg-ink/10" />
@@ -1055,12 +1106,12 @@ function EvidenceCapture({
 
       <label
         htmlFor={inputId}
-        className={`flex min-h-12 cursor-pointer items-center justify-center gap-2 px-3 text-sm font-black transition ${
+        className={`mx-3 mb-3 flex min-h-12 cursor-pointer items-center justify-center gap-2 rounded-md px-3 text-sm font-black shadow-button transition ${
           checking
             ? "pointer-events-none opacity-50"
             : stage === "setup"
-              ? "text-lake hover:bg-lake/10"
-              : "text-plum hover:bg-plum/10"
+              ? "bg-lake text-white hover:-translate-y-0.5 hover:bg-[#2467cb] active:translate-y-1 active:shadow-none"
+              : "bg-plum text-white hover:-translate-y-0.5 hover:bg-[#5e4194] active:translate-y-1 active:shadow-none"
         }`}
       >
         <Camera size={18} />
