@@ -4,14 +4,9 @@ import { evaluateMission } from "../lib/evaluate";
 import { missions } from "../lib/missions";
 import { verifyImageWithGemini } from "../lib/geminiVision";
 
-const apiKey = process.env.GEMINI_API_KEY ?? process.env.GOOGLE_API_KEY;
+const apiKey = getApiKey();
 const root = process.argv[2] ?? "sample-photos";
 const imageExtensions = new Set([".jpg", ".jpeg", ".png", ".webp"]);
-
-if (!apiKey) {
-  console.error("Set GEMINI_API_KEY before running sample photo verification.");
-  process.exit(1);
-}
 
 async function main() {
   const rootExists = await exists(root);
@@ -82,6 +77,17 @@ function mimeTypeFor(filePath: string) {
   }
 
   return "image/jpeg";
+}
+
+function getApiKey() {
+  const key = process.env.GEMINI_API_KEY ?? process.env.GOOGLE_API_KEY;
+
+  if (!key) {
+    console.error("Set GEMINI_API_KEY before running sample photo verification.");
+    process.exit(1);
+  }
+
+  return key;
 }
 
 main().catch((error) => {

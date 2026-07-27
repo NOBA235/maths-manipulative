@@ -15,6 +15,7 @@ import {
   Trophy,
   X,
 } from "lucide-react";
+import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
 import type { EvaluationResult } from "@/lib/evaluate";
 import { concepts, missions, type Concept, type Mission } from "@/lib/missions";
@@ -148,17 +149,18 @@ export default function MathVerifierApp() {
         throw new Error(payload.error ?? "Photo verification failed.");
       }
 
+      const evaluation = payload.evaluation;
       const alreadyCorrect = progress.missions[selectedMission.id]?.correct;
       const earnedXp =
-        payload.evaluation.status === "correct" && !alreadyCorrect
+        evaluation.status === "correct" && !alreadyCorrect
           ? selectedMission.xp
           : 0;
 
-      setResult(payload.evaluation);
+      setResult(evaluation);
       setRecentXp(earnedXp);
 
       setProgress((current) =>
-        recordMissionAttempt(current, selectedMission, payload.evaluation.status),
+        recordMissionAttempt(current, selectedMission, evaluation.status),
       );
     } catch (caught) {
       setError(
@@ -268,9 +270,11 @@ function AppHeader({
     <header className="mb-5 flex flex-col gap-4 border-b border-ink/10 pb-4">
       <div className="flex items-center justify-between gap-4">
         <div className="flex min-w-0 items-center gap-3">
-          <img
+          <Image
             src="/manipulatives.svg"
             alt=""
+            width={96}
+            height={60}
             className="h-14 w-20 shrink-0 rounded-lg border border-ink/10 object-cover shadow-sm"
           />
           <div className="min-w-0">
@@ -515,6 +519,7 @@ function MissionDetail({
       <div className="space-y-4">
         <div className="min-h-[280px] rounded-lg border border-ink/10 bg-white/82 p-3 shadow-sm">
           {previewUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
             <img
               src={previewUrl}
               alt="Selected mission photo"
