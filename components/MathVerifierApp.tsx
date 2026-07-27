@@ -16,9 +16,15 @@ import {
   X,
 } from "lucide-react";
 import Image from "next/image";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { EvaluationResult } from "@/lib/evaluate";
-import { concepts, missions, type Concept, type Mission } from "@/lib/missions";
+import {
+  concepts,
+  missions,
+  type Concept,
+  type EvidenceStage,
+  type Mission,
+} from "@/lib/missions";
 import {
   emptyProgress,
   getBadges,
@@ -37,6 +43,27 @@ type VerificationResponse = {
   error?: string;
 };
 
+type EvidenceFiles = Record<EvidenceStage, File | null>;
+type EvidencePreviews = Record<EvidenceStage, string | null>;
+
+const emptyEvidenceFiles = (): EvidenceFiles => ({
+  setup: null,
+  result: null,
+});
+
+const emptyEvidencePreviews = (): EvidencePreviews => ({
+  setup: null,
+  result: null,
+});
+
+function revokePreviews(previews: EvidencePreviews) {
+  for (const preview of Object.values(previews)) {
+    if (preview) {
+      URL.revokeObjectURL(preview);
+    }
+  }
+}
+
 const conceptStyles: Record<Concept, string> = {
   Addition: "border-lake/25 bg-lake/10 text-lake",
   Subtraction: "border-coral/25 bg-coral/10 text-coral",
@@ -52,8 +79,11 @@ export default function MathVerifierApp() {
   const [selectedMission, setSelectedMission] = useState<Mission | null>(null);
   const [progress, setProgress] = useState<ProgressState>(emptyProgress);
   const [prediction, setPrediction] = useState("");
-  const [photo, setPhoto] = useState<File | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [evidenceFiles, setEvidenceFiles] =
+    useState<EvidenceFiles>(emptyEvidenceFiles);
+  const [evidencePreviews, setEvidencePreviews] =
+    useState<EvidencePreviews>(emptyEvidencePreviews);
+  const evidencePreviewsRef = useRef<EvidencePreviews>(emptyEvidencePreviews());
   const [checking, setChecking] = useState(false);
   const [result, setResult] = useState<EvaluationResult | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -64,12 +94,15 @@ export default function MathVerifierApp() {
   }, []);
 
   useEffect(() => {
-    return () => {
-      if (previewUrl) {
-        URL.revokeObjectURL(previewUrl);
-      }
-    };
-  }, [previewUrl]);
+    evidencePreviewsRef.current = evidencePreviews;
+  }, [evidencePreviews]);
+
+  useEffect(
+    () => () => {
+      revokePreviews(evidencePreviewsRef.current);
+    },
+    [],
+  );
 
   const completedCount = useMemo(
     () => Object.values(progress.missions).filter((item) => item.correct).length,
@@ -100,31 +133,45 @@ export default function MathVerifierApp() {
 
   function resetAttempt() {
     setPrediction("");
-    setPhoto(null);
+    revokePreviews(evidencePreviewsRef.current);
+    const nextPreviews = emptyEvidencePreviews();
+    setEvidenceFiles(emptyEvidenceFiles());
+    setEvidencePreviews(nextPreviews);
+    evidencePreviewsRef.current = nextPreviews;
     setResult(null);
     setError(null);
     setRecentXp(0);
-
-    if (previewUrl) {
-      URL.revokeObjectURL(previewUrl);
-      setPreviewUrl(null);
-    }
   }
 
-  function handlePhotoChange(file: File | undefined) {
-    if (previewUrl) {
-      URL.revokeObjectURL(previewUrl);
+  function handlePhotoChange(stage: EvidenceStage, file: File | undefined) {
+    const existingPreview = evidencePreviewsRef.current[stage];
+
+    if (existingPreview) {
+      URL.revokeObjectURL(existingPreview);
     }
 
     setResult(null);
     setError(null);
     setRecentXp(0);
-    setPhoto(file ?? null);
-    setPreviewUrl(file ? URL.createObjectURL(file) : null);
+    setEvidenceFiles((current) => ({
+      ...current,
+      [stage]: file ?? null,
+    }));
+    setEvidencePreviews((current) => {
+      const next = {
+        ...current,
+        [stage]: file ? URL.createObjectURL(file) : null,
+      };
+      evidencePreviewsRef.current = next;
+      return next;
+    });
   }
 
-  async function verifyPhoto() {
-    if (!selectedMission || !photo) {
+  async function verifyEvidence() {
+    const setupImage = evidenceFiles.setup;
+    const resultImage = evidenceFiles.result;
+
+    if (!selectedMission || !setupImage || !resultImage) {
       return;
     }
 
@@ -136,7 +183,8 @@ export default function MathVerifierApp() {
     const body = new FormData();
     body.append("missionId", selectedMission.id);
     body.append("prediction", prediction);
-    body.append("image", photo);
+    body.append("setupImage", setupImage);
+    body.append("resultImage", resultImage);
 
     try {
       const response = await fetch("/api/verify", {
@@ -171,6 +219,47 @@ export default function MathVerifierApp() {
     } finally {
       setChecking(false);
     }
+  }
+
+  function retryAttempt() {
+    const stagesToClear =
+      result?.checkpoints
+        .filter((checkpoint) => checkpoint.status !== "correct")
+        .map((checkpoint) => checkpoint.stage) ?? [];
+
+    clearEvidenceStages(stagesToClear);
+    setResult(null);
+    setError(null);
+    setRecentXp(0);
+  }
+
+  function clearEvidenceStages(stages: EvidenceStage[]) {
+    if (stages.length === 0) {
+      return;
+    }
+
+    setEvidenceFiles((current) => {
+      const next = { ...current };
+
+      for (const stage of stages) {
+        next[stage] = null;
+      }
+
+      return next;
+    });
+    setEvidencePreviews((current) => {
+      const next = { ...current };
+
+      for (const stage of stages) {
+        if (next[stage]) {
+          URL.revokeObjectURL(next[stage]);
+        }
+        next[stage] = null;
+      }
+
+      evidencePreviewsRef.current = next;
+      return next;
+    });
   }
 
   function resetProgress() {
@@ -212,20 +301,16 @@ export default function MathVerifierApp() {
               progress={progress}
               prediction={prediction}
               setPrediction={setPrediction}
-              photo={photo}
-              previewUrl={previewUrl}
+              evidenceFiles={evidenceFiles}
+              evidencePreviews={evidencePreviews}
               checking={checking}
               result={result}
               error={error}
               recentXp={recentXp}
               onBack={backToList}
               onPhotoChange={handlePhotoChange}
-              onVerify={verifyPhoto}
-              onRetry={() => {
-                setResult(null);
-                setError(null);
-                setRecentXp(0);
-              }}
+              onVerify={verifyEvidence}
+              onRetry={retryAttempt}
               onNext={() => {
                 const index = missions.findIndex(
                   (mission) => mission.id === selectedMission.id,
@@ -405,8 +490,8 @@ function MissionDetail({
   progress,
   prediction,
   setPrediction,
-  photo,
-  previewUrl,
+  evidenceFiles,
+  evidencePreviews,
   checking,
   result,
   error,
@@ -421,23 +506,23 @@ function MissionDetail({
   progress: ProgressState;
   prediction: string;
   setPrediction: (value: string) => void;
-  photo: File | null;
-  previewUrl: string | null;
+  evidenceFiles: EvidenceFiles;
+  evidencePreviews: EvidencePreviews;
   checking: boolean;
   result: EvaluationResult | null;
   error: string | null;
   recentXp: number;
   onBack: () => void;
-  onPhotoChange: (file: File | undefined) => void;
+  onPhotoChange: (stage: EvidenceStage, file: File | undefined) => void;
   onVerify: () => void;
   onRetry: () => void;
   onNext: () => void;
 }) {
-  const inputId = `photo-${mission.id}`;
   const completed = progress.missions[mission.id]?.correct;
+  const canVerify = Boolean(evidenceFiles.setup && evidenceFiles.result);
 
   return (
-    <section className="mx-auto grid max-w-5xl gap-4 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
+    <section className="mx-auto grid max-w-6xl gap-4 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
       <div className="rounded-lg border border-ink/10 bg-white/82 p-4 shadow-sm sm:p-5">
         <button
           type="button"
@@ -467,10 +552,30 @@ function MissionDetail({
           ) : null}
         </div>
 
-        <h2 className="mt-4 text-3xl font-black leading-tight text-ink">
+        <h2 className="mt-4 text-2xl font-black leading-tight text-ink sm:text-3xl">
           {mission.title}
         </h2>
         <p className="mt-3 text-base leading-7 text-ink/72">{mission.instruction}</p>
+
+        <div className="mt-5 divide-y divide-ink/10 border-y border-ink/10">
+          {(["setup", "result"] as EvidenceStage[]).map((stage, index) => (
+            <div key={stage} className="flex gap-3 py-4">
+              <div
+                className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-md border text-sm font-black ${conceptStyles[mission.concept]}`}
+              >
+                {index + 1}
+              </div>
+              <div>
+                <h3 className="text-sm font-black text-ink">
+                  {mission.evidence[stage].title}
+                </h3>
+                <p className="mt-1 text-sm leading-5 text-ink/65">
+                  {mission.evidence[stage].instruction}
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
 
         <label className="mt-6 block text-sm font-black text-ink" htmlFor="prediction">
           {mission.predictionLabel}
@@ -484,53 +589,34 @@ function MissionDetail({
           className="mt-2 h-12 w-full rounded-lg border border-ink/12 bg-white px-3 text-base font-semibold text-ink outline-none transition placeholder:text-ink/35 focus:border-lake focus:ring-4 focus:ring-lake/15"
         />
 
-        <div className="mt-5 grid grid-cols-2 gap-3">
-          <label
-            htmlFor={inputId}
-            className="flex min-h-12 cursor-pointer items-center justify-center gap-2 rounded-lg bg-lake px-3 text-sm font-black text-white shadow-sm transition hover:bg-[#2766a8]"
-          >
-            <Camera size={18} />
-            Take Photo
-          </label>
-          <input
-            id={inputId}
-            type="file"
-            accept="image/*"
-            capture="environment"
-            className="sr-only"
-            onChange={(event) => onPhotoChange(event.target.files?.[0])}
-          />
-          <button
-            type="button"
-            onClick={onVerify}
-            disabled={!photo || checking}
-            className="flex min-h-12 items-center justify-center gap-2 rounded-lg bg-ink px-3 text-sm font-black text-white shadow-sm transition enabled:hover:bg-black disabled:cursor-not-allowed disabled:bg-ink/30"
-          >
-            {checking ? (
-              <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-            ) : (
-              <ImageUp size={18} />
-            )}
-            Verify
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={onVerify}
+          disabled={!canVerify || checking}
+          className="mt-5 flex min-h-12 w-full items-center justify-center gap-2 rounded-lg bg-ink px-3 text-sm font-black text-white shadow-sm transition enabled:hover:bg-black disabled:cursor-not-allowed disabled:bg-ink/30"
+        >
+          {checking ? (
+            <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+          ) : (
+            <ImageUp size={18} />
+          )}
+          Verify Both Steps
+        </button>
       </div>
 
       <div className="space-y-4">
-        <div className="min-h-[280px] rounded-lg border border-ink/10 bg-white/82 p-3 shadow-sm">
-          {previewUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={previewUrl}
-              alt="Selected mission photo"
-              className="h-full max-h-[420px] min-h-[250px] w-full rounded-md object-cover"
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
+          {(["setup", "result"] as EvidenceStage[]).map((stage, index) => (
+            <EvidenceCapture
+              key={stage}
+              mission={mission}
+              stage={stage}
+              stepNumber={index + 1}
+              file={evidenceFiles[stage]}
+              previewUrl={evidencePreviews[stage]}
+              onPhotoChange={onPhotoChange}
             />
-          ) : (
-            <div className="flex min-h-[250px] flex-col items-center justify-center rounded-md border border-dashed border-ink/20 bg-chalk/70 px-6 text-center text-ink/55">
-              <Camera size={42} />
-              <p className="mt-3 text-sm font-bold">Photo preview</p>
-            </div>
-          )}
+          ))}
         </div>
 
         {error ? <ErrorPanel message={error} /> : null}
@@ -546,6 +632,89 @@ function MissionDetail({
         ) : null}
       </div>
     </section>
+  );
+}
+
+function EvidenceCapture({
+  mission,
+  stage,
+  stepNumber,
+  file,
+  previewUrl,
+  onPhotoChange,
+}: {
+  mission: Mission;
+  stage: EvidenceStage;
+  stepNumber: number;
+  file: File | null;
+  previewUrl: string | null;
+  onPhotoChange: (stage: EvidenceStage, file: File | undefined) => void;
+}) {
+  const inputId = `${stage}-photo-${mission.id}`;
+  const checkpoint = mission.evidence[stage];
+
+  return (
+    <div className="overflow-hidden rounded-lg border border-ink/10 bg-white/82 shadow-sm">
+      <div className="flex min-h-16 items-center justify-between gap-3 border-b border-ink/10 px-4 py-3">
+        <div className="flex min-w-0 items-center gap-3">
+          <div
+            className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-md border text-sm font-black ${conceptStyles[mission.concept]}`}
+          >
+            {stepNumber}
+          </div>
+          <div className="min-w-0">
+            <p className="text-xs font-black uppercase tracking-[0.14em] text-ink/45">
+              {stage}
+            </p>
+            <h3 className="truncate text-sm font-black text-ink">
+              {checkpoint.title}
+            </h3>
+          </div>
+        </div>
+        {file ? (
+          <div
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-leaf/12 text-leaf"
+            title="Photo captured"
+          >
+            <Check size={18} />
+          </div>
+        ) : null}
+      </div>
+
+      <div className="aspect-[4/3] w-full bg-chalk/70">
+        {previewUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={previewUrl}
+            alt={`${checkpoint.title} evidence`}
+            className="h-full w-full object-cover"
+          />
+        ) : (
+          <div className="flex h-full min-h-[220px] flex-col items-center justify-center border-b border-dashed border-ink/15 px-6 text-center text-ink/50">
+            <Camera size={38} />
+            <p className="mt-3 text-sm font-bold leading-5">
+              {checkpoint.instruction}
+            </p>
+          </div>
+        )}
+      </div>
+
+      <label
+        htmlFor={inputId}
+        className="flex min-h-12 cursor-pointer items-center justify-center gap-2 px-3 text-sm font-black text-lake transition hover:bg-lake/10"
+      >
+        <Camera size={18} />
+        {file ? "Replace Photo" : "Capture Photo"}
+      </label>
+      <input
+        id={inputId}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        className="sr-only"
+        onChange={(event) => onPhotoChange(stage, event.target.files?.[0])}
+      />
+    </div>
   );
 }
 
@@ -594,19 +763,27 @@ function FeedbackPanel({
         )}
         <div className="min-w-0 flex-1">
           <h3 className="text-lg font-black text-ink">
-            {correct ? "Verified" : retake ? "Retake" : "Try Again"}
+            {correct
+              ? "Method and Result Verified"
+              : retake
+                ? "Clearer Evidence Needed"
+                : "Check the Highlighted Step"}
           </h3>
           <p className="mt-1 text-sm leading-6 text-ink/72">{result.explanation}</p>
         </div>
       </div>
 
-      <div className="mt-4 grid gap-3 sm:grid-cols-2">
-        <FactTile label="Detected" value={result.actual} />
-        <FactTile label="Needed" value={result.needed} />
+      <div className="mt-4 divide-y divide-ink/10 border-y border-ink/10">
+        {result.checkpoints.map((checkpoint) => (
+          <CheckpointFeedback
+            key={checkpoint.stage}
+            checkpoint={checkpoint}
+          />
+        ))}
       </div>
 
       {result.prediction ? (
-        <div className="mt-3 rounded-lg border border-ink/10 bg-white/75 p-3">
+        <div className="mt-4 border-t border-ink/10 pt-4">
           <p className="text-xs font-black uppercase tracking-[0.14em] text-ink/50">
             Prediction
           </p>
@@ -618,7 +795,7 @@ function FeedbackPanel({
       ) : null}
 
       {correct ? (
-        <div className="mt-4 rounded-lg border border-ink/10 bg-white/75 p-3">
+        <div className="mt-4 border-t border-ink/10 pt-4">
           <div className="flex items-center justify-between gap-3">
             <p className="text-sm font-black text-ink">
               {recentXp > 0 ? `+${recentXp} XP earned` : `${mission.title} mastered`}
@@ -643,7 +820,7 @@ function FeedbackPanel({
           className="flex min-h-11 items-center justify-center gap-2 rounded-lg border border-ink/10 bg-white px-3 text-sm font-black text-ink transition hover:bg-ink hover:text-white focus-visible:focus-ring"
         >
           <RotateCcw size={18} />
-          Retry
+          {correct ? "Review Again" : "Redo Highlighted"}
         </button>
         <button
           type="button"
@@ -655,6 +832,58 @@ function FeedbackPanel({
         </button>
       </div>
     </motion.div>
+  );
+}
+
+function CheckpointFeedback({
+  checkpoint,
+}: {
+  checkpoint: EvaluationResult["checkpoints"][number];
+}) {
+  const correct = checkpoint.status === "correct";
+  const retake = checkpoint.status === "retake";
+
+  return (
+    <div className="flex gap-3 py-4">
+      <div
+        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-md ${
+          correct
+            ? "bg-leaf/15 text-leaf"
+            : retake
+              ? "bg-saffron/25 text-[#7b5513]"
+              : "bg-coral/15 text-coral"
+        }`}
+      >
+        {correct ? (
+          <Check size={19} />
+        ) : retake ? (
+          <Camera size={18} />
+        ) : (
+          <X size={19} />
+        )}
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="text-xs font-black uppercase tracking-[0.14em] text-ink/45">
+          {checkpoint.stage} checkpoint
+        </p>
+        <h4 className="mt-0.5 text-sm font-black text-ink">
+          {checkpoint.title}
+        </h4>
+        <p className="mt-1 text-sm leading-5 text-ink/68">
+          {checkpoint.explanation}
+        </p>
+        <div className="mt-2 grid gap-2 text-xs sm:grid-cols-2">
+          <p className="font-bold text-ink/60">
+            <span className="text-ink/40">Detected: </span>
+            {checkpoint.actual}
+          </p>
+          <p className="font-bold text-ink/60">
+            <span className="text-ink/40">Needed: </span>
+            {checkpoint.needed}
+          </p>
+        </div>
+      </div>
+    </div>
   );
 }
 

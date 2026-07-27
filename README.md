@@ -1,8 +1,9 @@
 # Math Manipulative Verifier
 
 A mobile-first math learning app that connects physical, hands-on activities with
-AI-assisted verification. Learners complete a mission using everyday objects,
-predict the result, photograph their work, and receive structured feedback.
+AI-assisted verification. Learners capture the starting setup, perform the
+mathematical transformation, capture the result, and receive structured feedback
+about both their method and answer.
 
 The app includes eight missions across addition, subtraction, multiplication,
 division, fractions, geometry, and measurement. Progress, XP, streaks, badges,
@@ -11,11 +12,13 @@ and concept mastery are stored locally in the browser.
 ## Features
 
 - Eight grade 2-4 hands-on math missions
+- Two-checkpoint setup and result evidence capture
 - Native mobile camera and photo upload support
 - Gemini 2.5 Flash image analysis
 - Structured JSON responses with mission-specific schemas
 - Deterministic app-side correctness checks
-- Correct, incorrect, and retake feedback states
+- Checkpoint-specific correct, incorrect, and retake feedback
+- Selective retry that preserves already verified evidence
 - XP, streaks, badges, completion tracking, and concept mastery
 - Browser-only progress storage with no database or account required
 - Responsive interface with motion and accessible controls
@@ -71,12 +74,13 @@ included in the browser bundle.
 
 1. The learner selects a mission and reads the physical activity.
 2. They enter a prediction before submitting their work.
-3. They take or upload a photo of the completed manipulative.
-4. The browser sends the photo, mission ID, and prediction to `/api/verify`.
-5. Gemini analyzes the image and returns mission-specific JSON.
-6. The app compares that structured result with the mission's target.
-7. A confident match awards XP and records progress in `localStorage`.
-8. Ambiguous photos request a retake without counting as an attempt.
+3. They take or upload a setup photo before performing the action.
+4. They complete the physical transformation and capture the result.
+5. The browser sends both images, the mission ID, and prediction to `/api/verify`.
+6. Gemini analyzes the labeled evidence and returns mission-specific JSON.
+7. The app scores setup and result observations independently.
+8. Both checkpoints must match before XP is awarded in `localStorage`.
+9. Ambiguous evidence requests a retake only for the affected checkpoint.
 
 Gemini does not decide correctness through free-form prose. It reports
 observable values such as object count, array dimensions, equal group sizes,
@@ -136,8 +140,17 @@ sample-photos/
 `-- skip-5-to-25/
 ```
 
-Add three or four `.jpg`, `.jpeg`, `.png`, or `.webp` files to each folder.
-Include at least one messy or ambiguous image to exercise the retake behavior.
+Add up to four complete evidence pairs to each folder using matching suffixes:
+
+```text
+setup-1.jpg
+result-1.jpg
+setup-2.png
+result-2.png
+```
+
+Files may use `.jpg`, `.jpeg`, `.png`, or `.webp`. Include at least one pair
+with a messy or ambiguous stage to exercise selective retake behavior.
 
 Set the API key in the current shell and run the verifier:
 
@@ -152,8 +165,8 @@ On macOS or Linux:
 GEMINI_API_KEY="your_api_key" npm run verify:photos -- sample-photos
 ```
 
-Live verification sends each sample image to the Gemini API and prints the
-evaluation status, observed result, and required target.
+Live verification sends each evidence pair to the Gemini API and prints the
+overall status, observed transition, and required transition.
 
 ## Project Structure
 
@@ -183,7 +196,7 @@ public/
 
 - The app has no database, user accounts, or server-side progress history.
 - Learning progress is stored in the current browser using `localStorage`.
-- Submitted photos pass through the Next.js API route and are sent to the
+- Submitted setup and result photos pass through the Next.js API route and are sent to the
   configured Gemini API for analysis.
 - The application does not intentionally persist uploaded photos.
 - Clearing browser storage resets local progress.
@@ -194,9 +207,9 @@ deploying it in a school environment.
 ## Verification Limitations
 
 Image verification depends on lighting, focus, camera angle, object separation,
-and ruler visibility. The prompts require Gemini to return `confident: false`
-when the relevant evidence cannot be read reliably. Learners should then retake
-the photo with a clearer overhead view.
+and ruler visibility. The prompts require independent setup and result confidence
+values when evidence cannot be read reliably. Learners can then redo only the
+highlighted checkpoint with a clearer overhead view.
 
 AI output is treated as an observation, not an unquestioned answer. The server
 parses structured JSON, and the evaluator validates those values against the

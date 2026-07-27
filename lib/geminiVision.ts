@@ -1,32 +1,45 @@
 import { GoogleGenAI } from "@google/genai";
-import type { VisionResult } from "@/lib/evaluate";
+import type { EvidenceVisionResult } from "@/lib/evaluate";
 import type { Mission } from "@/lib/missions";
 import { buildPrompt, schemaForMission } from "@/lib/prompts";
 
-export type GeminiVisionInput = {
-  mission: Mission;
+export type EvidenceImageInput = {
   imageBase64: string;
   mimeType: string;
+};
+
+export type GeminiVisionInput = {
+  mission: Mission;
+  setupImage: EvidenceImageInput;
+  resultImage: EvidenceImageInput;
   apiKey: string;
   modelName?: string;
 };
 
-export async function verifyImageWithGemini({
+export async function verifyEvidenceWithGemini({
   mission,
-  imageBase64,
-  mimeType,
+  setupImage,
+  resultImage,
   apiKey,
   modelName = "gemini-2.5-flash",
-}: GeminiVisionInput): Promise<VisionResult> {
+}: GeminiVisionInput): Promise<EvidenceVisionResult> {
   const genAI = new GoogleGenAI({ apiKey });
   const result = await genAI.models.generateContent({
     model: modelName,
     contents: [
       buildPrompt(mission),
+      "SETUP PHOTO:",
       {
         inlineData: {
-          data: imageBase64,
-          mimeType,
+          data: setupImage.imageBase64,
+          mimeType: setupImage.mimeType,
+        },
+      },
+      "RESULT PHOTO:",
+      {
+        inlineData: {
+          data: resultImage.imageBase64,
+          mimeType: resultImage.mimeType,
         },
       },
     ],
@@ -40,5 +53,5 @@ export async function verifyImageWithGemini({
     throw new Error("Gemini returned no verification result.");
   }
 
-  return JSON.parse(result.text) as VisionResult;
+  return JSON.parse(result.text) as EvidenceVisionResult;
 }

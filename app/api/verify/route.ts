@@ -1,15 +1,18 @@
 import { NextResponse } from "next/server";
 import { evaluateMission } from "@/lib/evaluate";
 import { getMission } from "@/lib/missions";
-import { verifyImageWithGemini } from "@/lib/geminiVision";
+import { verifyEvidenceWithGemini } from "@/lib/geminiVision";
 
 export const runtime = "nodejs";
+
+const maxImageBytes = 10 * 1024 * 1024;
 
 export async function POST(request: Request) {
   const formData = await request.formData();
   const missionId = String(formData.get("missionId") ?? "");
   const prediction = String(formData.get("prediction") ?? "");
-  const image = formData.get("image");
+  const setupImage = formData.get("setupImage");
+  const resultImage = formData.get("resultImage");
   const mission = getMission(missionId);
   const apiKey = process.env.GEMINI_API_KEY ?? process.env.GOOGLE_API_KEY;
 
@@ -17,8 +20,19 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Unknown mission." }, { status: 400 });
   }
 
-  if (!(image instanceof File)) {
-    return NextResponse.json({ error: "Photo is required." }, { status: 400 });
+  if (!(setupImage instanceof File) || !(resultImage instanceof File)) {
+    return NextResponse.json(
+      { error: "Setup and result photos are required." },
+      { status: 400 },
+    );
+  }
+
+  const imageError =
+    validateImage(setupImage, "Setup") ??
+    validateImage(resultImage, "Result");
+
+  if (imageError) {
+    return NextResponse.json({ error: imageError }, { status: 400 });
   }
 
   if (!apiKey) {
@@ -32,11 +46,20 @@ export async function POST(request: Request) {
   }
 
   try {
-    const imageBuffer = Buffer.from(await image.arrayBuffer());
-    const vision = await verifyImageWithGemini({
+    const [setupBuffer, resultBuffer] = await Promise.all([
+      setupImage.arrayBuffer(),
+      resultImage.arrayBuffer(),
+    ]);
+    const vision = await verifyEvidenceWithGemini({
       mission,
-      imageBase64: imageBuffer.toString("base64"),
-      mimeType: image.type || "image/jpeg",
+      setupImage: {
+        imageBase64: Buffer.from(setupBuffer).toString("base64"),
+        mimeType: setupImage.type || "image/jpeg",
+      },
+      resultImage: {
+        imageBase64: Buffer.from(resultBuffer).toString("base64"),
+        mimeType: resultImage.type || "image/jpeg",
+      },
       apiKey,
       modelName: process.env.GEMINI_MODEL,
     });
@@ -51,9 +74,21 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         error:
-          "Gemini could not verify this photo. Try a clearer image or check the API key.",
+          "Gemini could not verify this evidence. Try clearer images or check the API key.",
       },
       { status: 502 },
     );
   }
+}
+
+function validateImage(image: File, label: string) {
+  if (image.size > maxImageBytes) {
+    return `${label} photo must be smaller than 10 MB.`;
+  }
+
+  if (image.type && !image.type.startsWith("image/")) {
+    return `${label} evidence must be an image.`;
+  }
+
+  return undefined;
 }

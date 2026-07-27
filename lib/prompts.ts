@@ -1,22 +1,23 @@
 import type { Mission, PromptMode } from "@/lib/missions";
 
+type PrimitiveSchema = {
+  type: "number" | "boolean" | "string";
+  description?: string;
+};
+
 export type ResponseSchema = {
   type: "object";
-  properties: Record<
-    string,
-    {
-      type: "number" | "boolean" | "string";
-      description?: string;
-    }
-  >;
+  properties: Record<string, PrimitiveSchema>;
   required: string[];
 };
 
 const jsonOnlyRules = [
-  "Return only valid JSON.",
-  "Do not use markdown fences, labels, comments, or prose.",
-  "If the photo is blurry, cropped, occluded, too messy to count, or the task cannot be verified from the image, set confident to false.",
-  "When confident is false, still return the schema fields with your best estimates where possible.",
+  "Return only valid JSON matching the provided schema.",
+  "Do not use markdown fences, labels, comments, or prose outside the JSON.",
+  "Use visual evidence only; do not copy or solve the expected values from the task text.",
+  "Judge setup_confident and result_confident independently.",
+  "Set a stage's confidence to false when its photo is blurry, cropped, occluded, too crowded, or cannot support the requested observation.",
+  "Always provide setup_summary and result_summary as short descriptions of what is actually visible.",
 ].join(" ");
 
 const countingModeInstructions: Record<
@@ -24,14 +25,25 @@ const countingModeInstructions: Record<
   string
 > = {
   "object-count":
-    "Count the visible objects in the final single group. Ignore hands, background patterns, shadows, containers, and writing.",
+    "Count the objects in each separated setup group and count the objects visible in the final result group.",
   array:
-    "Count the rows and columns in the visible object grid. Rows should be parallel lines of objects; columns are the objects in each row.",
+    "Count all loose objects in the setup. In the result, count rows, objects per row, and the total visible objects.",
   "equal-groups":
-    "Count the separated groups or piles, estimate how many objects are in each group, and decide whether the groups are equal.",
+    "Count the starting objects in the setup. In the result, count separated groups, objects per group, the total, and whether every group is equal.",
   "skip-counting":
-    "Count the separated groups, the number of objects in each group, and the total number of visible objects.",
+    "Count the starting objects in the setup. In the result, count separated groups, objects per group, the total, and whether every group is equal.",
 };
+
+function evidenceContext(mission: Mission) {
+  return [
+    "You are verifying two photos of a child's hands-on math activity.",
+    "The first supplied image is the SETUP PHOTO. The second supplied image is the RESULT PHOTO.",
+    `Mission: ${mission.title}.`,
+    `Mission overview: ${mission.instruction}`,
+    `Setup checkpoint: ${mission.evidence.setup.instruction}`,
+    `Result checkpoint: ${mission.evidence.result.instruction}`,
+  ].join(" ");
+}
 
 export function buildPrompt(mission: Mission) {
   if (
@@ -44,204 +56,295 @@ export function buildPrompt(mission: Mission) {
   }
 
   if (mission.promptMode === "fraction") {
-    return buildFractionPrompt(mission);
+    return [
+      evidenceContext(mission),
+      "In the setup, decide whether one undivided whole is clearly visible.",
+      "In the result, count the parts and judge whether their areas are roughly equal. Allow small natural folding or tearing imperfections.",
+      jsonOnlyRules,
+    ].join(" ");
   }
 
   if (mission.promptMode === "angle") {
-    return buildAnglePrompt(mission);
+    return [
+      evidenceContext(mission),
+      "In the setup, decide whether one flat sheet of paper is clearly visible.",
+      "In the result, decide whether a fold forming the angle is visible and estimate the angle between its two arms in degrees.",
+      "Account for camera perspective, but do not infer an angle when both arms are not visible.",
+      jsonOnlyRules,
+    ].join(" ");
   }
 
-  return buildMeasurementPrompt(mission);
+  return [
+    evidenceContext(mission),
+    "In the setup, decide whether both a pencil and a ruler are visible but not yet aligned for measurement.",
+    "In the result, decide whether the ruler zero is aligned with one pencil endpoint and read the pencil length in centimeters.",
+    "Do not claim confidence unless ruler markings and both pencil endpoints are readable.",
+    jsonOnlyRules,
+  ].join(" ");
 }
 
 export function buildCountingPrompt(mission: Mission) {
   return [
-    "You are verifying a child's hands-on math manipulative photo.",
-    `Mission: ${mission.title}.`,
-    `Task instruction: ${mission.instruction}`,
+    evidenceContext(mission),
     countingModeInstructions[
       mission.promptMode as Extract<
         PromptMode,
         "object-count" | "array" | "equal-groups" | "skip-counting"
       >
     ],
-    "Use visual evidence only; do not solve from the text alone.",
+    "Ignore hands, background patterns, shadows, containers, and writing when counting.",
     jsonOnlyRules,
   ].join(" ");
 }
 
-export function buildFractionPrompt(mission: Mission) {
-  return [
-    "You are verifying a child's fraction photo.",
-    `Mission: ${mission.title}.`,
-    `Task instruction: ${mission.instruction}`,
-    "Detect the number of visible parts made from one original whole and judge whether the parts are roughly equal in size.",
-    "Allow small natural cutting or folding imperfections, but reject clearly unequal pieces.",
-    jsonOnlyRules,
-  ].join(" ");
-}
+const summaryProperties = {
+  setup_summary: {
+    type: "string",
+    description: "Short factual description of the visible setup evidence.",
+  },
+  result_summary: {
+    type: "string",
+    description: "Short factual description of the visible result evidence.",
+  },
+} satisfies Record<string, PrimitiveSchema>;
 
-export function buildAnglePrompt(mission: Mission) {
-  return [
-    "You are verifying a child's geometry photo.",
-    `Mission: ${mission.title}.`,
-    `Task instruction: ${mission.instruction}`,
-    "Estimate the main folded angle in degrees from the two visible sides of the fold.",
-    "Account for perspective, but set confident to false if the angle arms are not visible enough.",
-    jsonOnlyRules,
-  ].join(" ");
-}
-
-export function buildMeasurementPrompt(mission: Mission) {
-  return [
-    "You are verifying a child's measurement photo.",
-    `Mission: ${mission.title}.`,
-    `Task instruction: ${mission.instruction}`,
-    "Read the ruler next to the object and estimate the object's measured length in centimeters.",
-    "Set confident to false if the ruler markings, object endpoints, or alignment are not visible enough.",
-    jsonOnlyRules,
-  ].join(" ");
-}
+const confidenceProperties = {
+  setup_confident: {
+    type: "boolean",
+    description: "True only when the setup checkpoint can be verified.",
+  },
+  result_confident: {
+    type: "boolean",
+    description: "True only when the result checkpoint can be verified.",
+  },
+} satisfies Record<string, PrimitiveSchema>;
 
 export const schemas = {
-  count: {
+  addition: {
     type: "object",
     properties: {
-      count: {
+      setup_first_count: {
         type: "number",
-        description: "Number of target objects visible in the final group.",
+        description: "Object count in the first separated setup pile.",
       },
-      confident: {
-        type: "boolean",
-        description: "True only when the count can be verified from the photo.",
+      setup_second_count: {
+        type: "number",
+        description: "Object count in the second separated setup pile.",
       },
+      result_count: {
+        type: "number",
+        description: "Object count in the combined result group.",
+      },
+      ...confidenceProperties,
+      ...summaryProperties,
     },
-    required: ["count", "confident"],
+    required: [
+      "setup_first_count",
+      "setup_second_count",
+      "result_count",
+      "setup_confident",
+      "result_confident",
+      "setup_summary",
+      "result_summary",
+    ],
+  },
+  subtraction: {
+    type: "object",
+    properties: {
+      setup_count: {
+        type: "number",
+        description: "Object count in the complete starting group.",
+      },
+      result_count: {
+        type: "number",
+        description: "Object count remaining in the result.",
+      },
+      ...confidenceProperties,
+      ...summaryProperties,
+    },
+    required: [
+      "setup_count",
+      "result_count",
+      "setup_confident",
+      "result_confident",
+      "setup_summary",
+      "result_summary",
+    ],
   },
   array: {
     type: "object",
     properties: {
-      rows: {
+      setup_count: {
         type: "number",
-        description: "Number of visible rows in the object array.",
+        description: "Total loose objects visible in the setup.",
       },
-      cols: {
+      result_rows: {
         type: "number",
-        description: "Number of visible objects in each row.",
+        description: "Rows visible in the result array.",
       },
-      product: {
+      result_cols: {
         type: "number",
-        description: "Total visible objects in the array.",
+        description: "Objects visible in each result row.",
       },
-      confident: {
-        type: "boolean",
-        description: "True only when rows and columns can be verified.",
+      result_total: {
+        type: "number",
+        description: "Total objects visible in the result array.",
       },
+      ...confidenceProperties,
+      ...summaryProperties,
     },
-    required: ["rows", "cols", "product", "confident"],
+    required: [
+      "setup_count",
+      "result_rows",
+      "result_cols",
+      "result_total",
+      "setup_confident",
+      "result_confident",
+      "setup_summary",
+      "result_summary",
+    ],
   },
   groups: {
     type: "object",
     properties: {
-      groups: {
+      setup_count: {
         type: "number",
-        description: "Number of separated groups or piles.",
+        description: "Total objects visible in the starting setup group.",
       },
-      per_group: {
+      result_groups: {
         type: "number",
-        description: "Number of objects in each group when groups are equal, or best typical group size.",
+        description: "Separated groups visible in the result.",
       },
-      equal: {
+      result_per_group: {
+        type: "number",
+        description: "Objects in each result group, or the best typical count.",
+      },
+      result_total: {
+        type: "number",
+        description: "Total objects visible across all result groups.",
+      },
+      result_equal: {
         type: "boolean",
-        description: "Whether the visible groups have the same number of objects.",
+        description: "Whether every visible result group has the same count.",
       },
-      confident: {
-        type: "boolean",
-        description: "True only when the grouping is visible enough to verify.",
-      },
+      ...confidenceProperties,
+      ...summaryProperties,
     },
-    required: ["groups", "per_group", "equal", "confident"],
-  },
-  skipCounting: {
-    type: "object",
-    properties: {
-      groups: {
-        type: "number",
-        description: "Number of separated groups.",
-      },
-      per_group: {
-        type: "number",
-        description: "Number of objects in each group.",
-      },
-      total: {
-        type: "number",
-        description: "Total number of visible objects.",
-      },
-      confident: {
-        type: "boolean",
-        description: "True only when groups and total can be verified.",
-      },
-    },
-    required: ["groups", "per_group", "total", "confident"],
+    required: [
+      "setup_count",
+      "result_groups",
+      "result_per_group",
+      "result_total",
+      "result_equal",
+      "setup_confident",
+      "result_confident",
+      "setup_summary",
+      "result_summary",
+    ],
   },
   fraction: {
     type: "object",
     properties: {
-      parts_detected: {
+      setup_whole_visible: {
+        type: "boolean",
+        description: "Whether one clearly undivided whole is visible in the setup.",
+      },
+      result_parts_detected: {
         type: "number",
-        description: "Number of visible pieces or parts from the original whole.",
+        description: "Parts visible after dividing the whole.",
       },
-      roughly_equal: {
+      result_roughly_equal: {
         type: "boolean",
-        description: "Whether the parts look roughly equal in area.",
+        description: "Whether the result parts are roughly equal in area.",
       },
-      confident: {
-        type: "boolean",
-        description: "True only when the parts are visible enough to verify.",
-      },
+      ...confidenceProperties,
+      ...summaryProperties,
     },
-    required: ["parts_detected", "roughly_equal", "confident"],
+    required: [
+      "setup_whole_visible",
+      "result_parts_detected",
+      "result_roughly_equal",
+      "setup_confident",
+      "result_confident",
+      "setup_summary",
+      "result_summary",
+    ],
   },
   angle: {
     type: "object",
     properties: {
-      angle_estimate_deg: {
-        type: "number",
-        description: "Estimated angle in degrees.",
-      },
-      confident: {
+      setup_paper_visible: {
         type: "boolean",
-        description: "True only when the angle can be estimated from the photo.",
+        description: "Whether one flat sheet of paper is clearly visible in the setup.",
       },
+      result_fold_visible: {
+        type: "boolean",
+        description: "Whether a fold with two visible angle arms is present.",
+      },
+      result_angle_estimate_deg: {
+        type: "number",
+        description: "Estimated angle between the result fold arms in degrees.",
+      },
+      ...confidenceProperties,
+      ...summaryProperties,
     },
-    required: ["angle_estimate_deg", "confident"],
+    required: [
+      "setup_paper_visible",
+      "result_fold_visible",
+      "result_angle_estimate_deg",
+      "setup_confident",
+      "result_confident",
+      "setup_summary",
+      "result_summary",
+    ],
   },
   measurement: {
     type: "object",
     properties: {
-      measured_length_cm: {
-        type: "number",
-        description: "Measured object length in centimeters from the ruler.",
-      },
-      confident: {
+      setup_pencil_visible: {
         type: "boolean",
-        description: "True only when the ruler and object endpoints are readable.",
+        description: "Whether a pencil is clearly visible in the setup.",
       },
+      setup_ruler_visible: {
+        type: "boolean",
+        description: "Whether a ruler is clearly visible in the setup.",
+      },
+      result_ruler_aligned: {
+        type: "boolean",
+        description: "Whether ruler zero is aligned with one pencil endpoint.",
+      },
+      result_measured_length_cm: {
+        type: "number",
+        description: "Pencil length in centimeters read from the ruler.",
+      },
+      ...confidenceProperties,
+      ...summaryProperties,
     },
-    required: ["measured_length_cm", "confident"],
+    required: [
+      "setup_pencil_visible",
+      "setup_ruler_visible",
+      "result_ruler_aligned",
+      "result_measured_length_cm",
+      "setup_confident",
+      "result_confident",
+      "setup_summary",
+      "result_summary",
+    ],
   },
 } satisfies Record<string, ResponseSchema>;
 
 export function schemaForMission(mission: Mission): ResponseSchema {
   switch (mission.promptMode) {
     case "object-count":
-      return schemas.count;
+      return mission.targetSpec.kind === "count" &&
+        mission.targetSpec.operation === "addition"
+        ? schemas.addition
+        : schemas.subtraction;
     case "array":
       return schemas.array;
     case "equal-groups":
-      return schemas.groups;
     case "skip-counting":
-      return schemas.skipCounting;
+      return schemas.groups;
     case "fraction":
       return schemas.fraction;
     case "angle":

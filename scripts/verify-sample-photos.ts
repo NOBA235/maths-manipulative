@@ -2,47 +2,54 @@ import { readdir, readFile, stat } from "node:fs/promises";
 import path from "node:path";
 import { evaluateMission } from "../lib/evaluate";
 import { missions } from "../lib/missions";
-import { verifyImageWithGemini } from "../lib/geminiVision";
+import { verifyEvidenceWithGemini } from "../lib/geminiVision";
 
 const apiKey = getApiKey();
 const root = process.argv[2] ?? "sample-photos";
-const imageExtensions = new Set([".jpg", ".jpeg", ".png", ".webp"]);
 
 async function main() {
   const rootExists = await exists(root);
 
   if (!rootExists) {
     console.error(
-      `Create ${root}/<mission-id>/ with 3-4 photos per mission, including one messy ambiguous photo.`,
+      `Create ${root}/<mission-id>/ with setup-1.jpg and result-1.jpg evidence pairs.`,
     );
     process.exit(1);
   }
 
   for (const mission of missions) {
     const folder = path.join(root, mission.id);
-    const photos = (await safeReadDir(folder))
-      .filter((file) => imageExtensions.has(path.extname(file).toLowerCase()))
-      .slice(0, 4);
+    const pairs = findPhotoPairs(await safeReadDir(folder)).slice(0, 4);
 
-    if (photos.length === 0) {
-      console.log(`${mission.id}: no sample photos found`);
+    if (pairs.length === 0) {
+      console.log(`${mission.id}: no complete evidence pairs found`);
       continue;
     }
 
-    for (const photo of photos) {
-      const filePath = path.join(folder, photo);
-      const image = await readFile(filePath);
-      const vision = await verifyImageWithGemini({
+    for (const pair of pairs) {
+      const setupPath = path.join(folder, pair.setup);
+      const resultPath = path.join(folder, pair.result);
+      const [setupImage, resultImage] = await Promise.all([
+        readFile(setupPath),
+        readFile(resultPath),
+      ]);
+      const vision = await verifyEvidenceWithGemini({
         mission,
-        imageBase64: image.toString("base64"),
-        mimeType: mimeTypeFor(filePath),
+        setupImage: {
+          imageBase64: setupImage.toString("base64"),
+          mimeType: mimeTypeFor(setupPath),
+        },
+        resultImage: {
+          imageBase64: resultImage.toString("base64"),
+          mimeType: mimeTypeFor(resultPath),
+        },
         apiKey,
         modelName: process.env.GEMINI_MODEL,
       });
       const evaluation = evaluateMission(mission, vision);
 
       console.log(
-        `${mission.id}/${photo}: ${evaluation.status} | actual=${evaluation.actual} | needed=${evaluation.needed}`,
+        `${mission.id}/${pair.id}: ${evaluation.status} | actual=${evaluation.actual} | needed=${evaluation.needed}`,
       );
     }
   }
@@ -63,6 +70,34 @@ async function safeReadDir(folder: string) {
   } catch {
     return [];
   }
+}
+
+function findPhotoPairs(files: string[]) {
+  const pairs = new Map<string, { setup?: string; result?: string }>();
+
+  for (const file of files) {
+    const match = file.match(
+      /^(setup|result)(?:[-_]([^.]+))?\.(jpg|jpeg|png|webp)$/i,
+    );
+
+    if (!match) {
+      continue;
+    }
+
+    const stage = match[1].toLowerCase() as "setup" | "result";
+    const id = match[2] ?? "1";
+    const pair = pairs.get(id) ?? {};
+    pair[stage] = file;
+    pairs.set(id, pair);
+  }
+
+  return [...pairs.entries()]
+    .filter(
+      (entry): entry is [string, { setup: string; result: string }] =>
+        Boolean(entry[1].setup && entry[1].result),
+    )
+    .map(([id, pair]) => ({ id, ...pair }))
+    .sort((a, b) => a.id.localeCompare(b.id, undefined, { numeric: true }));
 }
 
 function mimeTypeFor(filePath: string) {
