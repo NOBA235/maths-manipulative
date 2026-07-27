@@ -24,6 +24,14 @@ export type Badge = {
   earned: boolean;
 };
 
+export type ParentSnapshot = {
+  verifiedMissions: Mission[];
+  needsPractice: Mission[];
+  recommendedMission: Mission;
+  recommendationReason: string;
+  summary: string;
+};
+
 export const emptyProgress: ProgressState = {
   totalXp: 0,
   streak: 0,
@@ -142,6 +150,39 @@ export function getMastery(progress: ProgressState) {
       attempts,
     };
   });
+}
+
+export function getParentSnapshot(progress: ProgressState): ParentSnapshot {
+  const verifiedMissions = missions.filter(
+    (mission) => progress.missions[mission.id]?.correct,
+  );
+  const needsPractice = missions.filter((mission) => {
+    const missionProgress = progress.missions[mission.id];
+    return missionProgress && missionProgress.attempts > 0 && !missionProgress.correct;
+  });
+  const nextUnfinished = missions.find(
+    (mission) => !progress.missions[mission.id]?.correct,
+  );
+  const recommendedMission = needsPractice[0] ?? nextUnfinished ?? missions[0];
+
+  const recommendationReason = needsPractice.length
+    ? `A calm repeat will help strengthen ${recommendedMission.concept.toLowerCase()} before moving on.`
+    : nextUnfinished
+      ? "It is the next unfinished activity on the learning trail."
+      : "Every activity is verified. Replaying it is a great way to keep the skill fresh.";
+
+  const summary =
+    verifiedMissions.length === 0
+      ? "No hands-on learning has been verified yet. One short mission can create a useful first evidence point."
+      : `${verifiedMissions.length} of ${missions.length} missions have a verified setup and result.`;
+
+  return {
+    verifiedMissions,
+    needsPractice,
+    recommendedMission,
+    recommendationReason,
+    summary,
+  };
 }
 
 export function localDateKey(date = new Date()) {

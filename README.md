@@ -23,6 +23,8 @@ and concept mastery are stored locally in the browser.
 - Checkpoint-specific correct, incorrect, and retake feedback
 - Selective retry that preserves already verified evidence
 - XP, streaks, badges, completion tracking, and concept mastery
+- Parent Center with verified learning records, a practice queue, and next-activity coaching
+- Shareable parent updates that include progress only, never uploaded photos
 - Browser-only progress storage with no database or account required
 - Responsive interface with motion and accessible controls
 
@@ -101,6 +103,27 @@ on the math rather than deciphering instructions:
    gaps between groups or showing every ruler mark clearly.
 5. The app shows `0/2`, `1/2`, or `2/2` photos ready, making the next action
    obvious before verification begins.
+
+## Parent Center
+
+The Parent Center turns completed activities into a small, practical learning
+report. It is designed to answer the questions a parent actually has after a
+short session: What was independently verified? What needs another try? What
+should we do next?
+
+- **Verified Evidence** lists only missions where both the physical starting
+  setup and final result were checked successfully.
+- **Practice Queue** surfaces started missions that have not yet been verified,
+  so a child can revisit the right skill instead of repeating random work.
+- **Recommended Next** prioritizes a gentle repeat when practice is needed;
+  otherwise it selects the next unfinished mission.
+- **60-Second Coach** gives the adult one age-appropriate question to ask while
+  the learner explains their own thinking.
+- **Share Update** uses the device share sheet when available, or copies a
+  text-only progress update. It never shares photos.
+
+The Parent Center uses browser-local progress data. It does not require an
+account and does not create a server-side learner profile.
 
 Gemini does not decide correctness through free-form prose. It reports
 observable values such as object count, array dimensions, equal group sizes,

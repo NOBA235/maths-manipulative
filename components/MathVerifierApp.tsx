@@ -6,10 +6,13 @@ import {
   ArrowLeft,
   BarChart3,
   Camera,
+  CalendarDays,
   Check,
   ChevronRight,
   Divide,
   Flame,
+  HeartHandshake,
+  Lightbulb,
   ListChecks,
   Minus,
   PieChart,
@@ -17,7 +20,9 @@ import {
   RotateCcw,
   Ruler,
   ScanLine,
+  Share2,
   Shapes,
+  ShieldCheck,
   Sparkles,
   Star,
   Trophy,
@@ -38,13 +43,14 @@ import {
   emptyProgress,
   getBadges,
   getMastery,
+  getParentSnapshot,
   loadProgress,
   recordMissionAttempt,
   saveProgress,
   type ProgressState,
 } from "@/lib/progress";
 
-type Screen = "missions" | "progress";
+type Screen = "missions" | "progress" | "parents";
 
 type VerificationResponse = {
   vision?: unknown;
@@ -326,7 +332,17 @@ export default function MathVerifierApp() {
       />
 
       <AnimatePresence mode="wait">
-        {screen === "progress" ? (
+        {screen === "parents" ? (
+          <motion.div
+            key="parents"
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -12 }}
+            transition={{ duration: 0.18 }}
+          >
+            <ParentCenter progress={progress} onOpenMission={openMission} />
+          </motion.div>
+        ) : screen === "progress" ? (
           <motion.div
             key="progress"
             initial={{ opacity: 0, y: 12 }}
@@ -444,7 +460,7 @@ function AppHeader({
         </motion.div>
       </div>
 
-      <nav className="fixed inset-x-3 bottom-3 z-50 grid grid-cols-2 gap-1 rounded-lg border border-ink/10 bg-white/95 p-1 shadow-lift backdrop-blur sm:static sm:mt-3 sm:bg-white/80 sm:shadow-sm">
+      <nav className="fixed inset-x-3 bottom-3 z-50 grid grid-cols-3 gap-1 rounded-lg border border-ink/10 bg-white/95 p-1 shadow-lift backdrop-blur sm:static sm:mt-3 sm:bg-white/80 sm:shadow-sm">
         <HeaderNavButton
           active={screen === "missions"}
           icon={ListChecks}
@@ -457,6 +473,12 @@ function AppHeader({
           label="Progress"
           suffix={`${completedCount}/${missions.length}`}
           onClick={() => setScreen("progress")}
+        />
+        <HeaderNavButton
+          active={screen === "parents"}
+          icon={HeartHandshake}
+          label="Parents"
+          onClick={() => setScreen("parents")}
         />
       </nav>
     </header>
@@ -480,7 +502,7 @@ function HeaderNavButton({
     <button
       type="button"
       onClick={onClick}
-      className={`relative flex min-h-12 items-center justify-center gap-2 overflow-hidden rounded-md px-3 text-sm font-black transition ${
+      className={`relative flex min-h-12 items-center justify-center gap-1 overflow-hidden rounded-md px-2 text-xs font-black transition sm:gap-2 sm:px-3 sm:text-sm ${
         active ? "text-white" : "text-ink/60 hover:bg-paper"
       }`}
     >
@@ -491,7 +513,7 @@ function HeaderNavButton({
           transition={{ type: "spring", stiffness: 420, damping: 34 }}
         />
       ) : null}
-      <span className="relative flex items-center gap-2">
+      <span className="relative flex items-center gap-1 sm:gap-2">
         <Icon size={19} />
         {label}
         {suffix ? (
@@ -1281,6 +1303,350 @@ function ErrorPanel({ message }: { message: string }) {
       {message}
     </motion.div>
   );
+}
+
+function ParentCenter({
+  progress,
+  onOpenMission,
+}: {
+  progress: ProgressState;
+  onOpenMission: (mission: Mission) => void;
+}) {
+  const [shareStatus, setShareStatus] = useState("");
+  const snapshot = getParentSnapshot(progress);
+  const recentVerified = [...snapshot.verifiedMissions].sort((first, second) => {
+    const firstDate = progress.missions[first.id]?.completedAt ?? "";
+    const secondDate = progress.missions[second.id]?.completedAt ?? "";
+    return secondDate.localeCompare(firstDate);
+  });
+  const reportText = buildParentReport(snapshot, progress);
+
+  async function shareReport() {
+    setShareStatus("");
+
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: "Math learning update",
+          text: reportText,
+        });
+        setShareStatus("Update shared.");
+        return;
+      }
+
+      if (navigator.clipboard) {
+        await navigator.clipboard.writeText(reportText);
+        setShareStatus("Update copied to your clipboard.");
+        return;
+      }
+
+      setShareStatus("Sharing is not available in this browser.");
+    } catch (caught) {
+      if (caught instanceof DOMException && caught.name === "AbortError") {
+        return;
+      }
+
+      setShareStatus("Could not share the update. Please try again.");
+    }
+  }
+
+  return (
+    <section aria-label="Parent Center" className="space-y-6">
+      <motion.section
+        initial={{ opacity: 0, y: 15 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="overflow-hidden rounded-lg border border-ink/10 bg-white shadow-lift"
+      >
+        <div className="flex flex-col gap-5 p-5 sm:flex-row sm:items-start sm:justify-between sm:p-7">
+          <div className="flex max-w-2xl gap-4">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-ink text-white shadow-button">
+              <ShieldCheck size={25} />
+            </div>
+            <div>
+              <p className="text-xs font-black uppercase tracking-[0.14em] text-plum">
+                Parent Center
+              </p>
+              <h2 className="mt-1 text-2xl font-black text-ink sm:text-3xl">
+                Learning You Can See
+              </h2>
+              <p className="mt-2 text-sm font-bold leading-6 text-ink/65">
+                {snapshot.summary} Every completed mission includes a checked
+                starting setup and final result.
+              </p>
+            </div>
+          </div>
+
+          <div className="shrink-0 sm:text-right">
+            <button
+              type="button"
+              onClick={shareReport}
+              className="flex min-h-11 items-center justify-center gap-2 rounded-lg bg-ink px-4 text-sm font-black text-white shadow-button transition hover:-translate-y-0.5 hover:bg-black active:translate-y-1 active:shadow-none focus-visible:focus-ring"
+            >
+              <Share2 size={18} />
+              Share Update
+            </button>
+            <p aria-live="polite" className="mt-2 max-w-52 text-xs font-bold text-ink/50">
+              {shareStatus || "Shares progress only, never photos."}
+            </p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-3 divide-x divide-ink/10 border-t border-ink/10">
+          <ParentStat
+            icon={ShieldCheck}
+            label="Verified"
+            value={`${snapshot.verifiedMissions.length}/${missions.length}`}
+            detail="missions"
+            color="text-leaf"
+          />
+          <ParentStat
+            icon={RotateCcw}
+            label="Practice"
+            value={`${snapshot.needsPractice.length}`}
+            detail="to revisit"
+            color="text-coral"
+          />
+          <ParentStat
+            icon={Flame}
+            label="Streak"
+            value={`${progress.streak}`}
+            detail="active days"
+            color="text-[#b36d00]"
+          />
+        </div>
+      </motion.section>
+
+      <div className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
+        <motion.section
+          initial={{ opacity: 0, x: -14 }}
+          animate={{ opacity: 1, x: 0 }}
+          className="rounded-lg border border-lake/25 bg-[#f1f7ff] p-5 shadow-button sm:p-6"
+        >
+          <div className="flex items-start gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-lake text-white shadow-sm">
+              <Star className="fill-white" size={21} />
+            </div>
+            <div>
+              <p className="text-xs font-black uppercase tracking-[0.14em] text-lake">
+                Recommended Next
+              </p>
+              <h3 className="mt-1 text-xl font-black text-ink">
+                {snapshot.recommendedMission.title}
+              </h3>
+              <p className="mt-1 text-sm font-bold leading-6 text-ink/65">
+                {snapshot.recommendationReason}
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-5 border-y border-lake/15 py-4">
+            <p className="text-xs font-black uppercase tracking-[0.14em] text-ink/45">
+              Have Ready
+            </p>
+            <p className="mt-1 text-sm font-bold text-ink/70">
+              {snapshot.recommendedMission.materials.join(" | ")}
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => onOpenMission(snapshot.recommendedMission)}
+            className="mt-4 flex min-h-11 items-center gap-2 rounded-lg bg-lake px-4 text-sm font-black text-white shadow-button transition hover:-translate-y-0.5 hover:bg-[#2467cb] active:translate-y-1 active:shadow-none focus-visible:focus-ring"
+          >
+            Open Next Activity
+            <ChevronRight size={18} />
+          </button>
+        </motion.section>
+
+        <motion.section
+          initial={{ opacity: 0, x: 14 }}
+          animate={{ opacity: 1, x: 0 }}
+          className="rounded-lg border border-saffron/45 bg-[#fff9df] p-5 shadow-button sm:p-6"
+        >
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-saffron text-ink shadow-sm">
+              <Lightbulb size={21} />
+            </div>
+            <div>
+              <p className="text-xs font-black uppercase tracking-[0.14em] text-[#8b6200]">
+                60-Second Coach
+              </p>
+              <h3 className="mt-1 text-xl font-black text-ink">Ask, Then Listen</h3>
+            </div>
+          </div>
+
+          <p className="mt-5 text-sm font-black leading-6 text-ink">
+            “{parentConversationStarter(snapshot.recommendedMission)}”
+          </p>
+          <div className="mt-5 border-t border-[#d5ab22]/30 pt-4">
+            <p className="text-xs font-black uppercase tracking-[0.14em] text-[#8b6200]">
+              Why This Helps
+            </p>
+            <p className="mt-1 text-sm font-bold leading-6 text-ink/65">
+              {snapshot.recommendedMission.explainer}
+            </p>
+          </div>
+        </motion.section>
+      </div>
+
+      <section className="rounded-lg border border-ink/10 bg-white shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-ink/10 px-5 py-4 sm:px-6">
+          <div>
+            <p className="text-xs font-black uppercase tracking-[0.14em] text-aqua">
+              Learning Record
+            </p>
+            <h2 className="mt-1 text-xl font-black text-ink">Verified Evidence</h2>
+          </div>
+          <span className="flex items-center gap-1.5 text-xs font-black text-ink/50">
+            <CalendarDays size={16} />
+            Stored on this device
+          </span>
+        </div>
+
+        {recentVerified.length ? (
+          <div className="divide-y divide-ink/10">
+            {recentVerified.map((mission) => {
+              const completedAt = progress.missions[mission.id]?.completedAt;
+              const Icon = conceptIcons[mission.concept];
+
+              return (
+                <div
+                  key={mission.id}
+                  className="flex items-center gap-3 px-5 py-4 sm:px-6"
+                >
+                  <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${conceptAccentStyles[mission.concept]}`}>
+                    <Icon size={20} />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-black text-ink">{mission.title}</p>
+                    <p className="mt-0.5 text-xs font-bold text-ink/50">
+                      {mission.concept} | setup and result verified
+                    </p>
+                  </div>
+                  <div className="shrink-0 text-right">
+                    <Check className="ml-auto text-leaf" size={19} strokeWidth={3} />
+                    <p className="mt-1 text-xs font-bold text-ink/45">
+                      {formatProgressDate(completedAt)}
+                    </p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="px-5 py-8 text-center sm:px-6">
+            <ShieldCheck className="mx-auto text-ink/20" size={32} />
+            <p className="mt-3 text-sm font-black text-ink">No verified missions yet</p>
+            <p className="mt-1 text-sm font-bold text-ink/50">
+              The first completed activity will appear here with its evidence status.
+            </p>
+          </div>
+        )}
+
+        {snapshot.needsPractice.length ? (
+          <div className="border-t border-ink/10 bg-[#fff5f7] px-5 py-4 sm:px-6">
+            <p className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.14em] text-coral">
+              <RotateCcw size={16} />
+              Practice Queue
+            </p>
+            <div className="mt-3 grid gap-2 sm:grid-cols-2">
+              {snapshot.needsPractice.map((mission) => (
+                <button
+                  key={mission.id}
+                  type="button"
+                  onClick={() => onOpenMission(mission)}
+                  className="flex min-h-11 items-center justify-between gap-3 rounded-md border border-coral/20 bg-white px-3 text-left text-sm font-black text-ink shadow-sm transition hover:border-coral hover:text-coral focus-visible:focus-ring"
+                >
+                  <span>{mission.title}</span>
+                  <ChevronRight className="shrink-0" size={17} />
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : null}
+      </section>
+
+      <p className="flex items-start gap-2 px-1 text-xs font-bold leading-5 text-ink/45">
+        <HeartHandshake className="mt-0.5 shrink-0" size={15} />
+        This report uses local completion data only. Uploaded photos are not saved
+        in the report or included when an update is shared.
+      </p>
+    </section>
+  );
+}
+
+function ParentStat({
+  icon: Icon,
+  label,
+  value,
+  detail,
+  color,
+}: {
+  icon: LucideIcon;
+  label: string;
+  value: string;
+  detail: string;
+  color: string;
+}) {
+  return (
+    <div className="min-w-0 px-3 py-4 text-center sm:px-5">
+      <Icon className={`mx-auto ${color}`} size={18} />
+      <p className="mt-2 text-[10px] font-black uppercase tracking-[0.12em] text-ink/45">
+        {label}
+      </p>
+      <p className="mt-0.5 truncate text-lg font-black text-ink">{value}</p>
+      <p className="text-[10px] font-bold text-ink/45">{detail}</p>
+    </div>
+  );
+}
+
+function parentConversationStarter(mission: Mission) {
+  switch (mission.concept) {
+    case "Addition":
+      return "How can you check that both piles are included in the total?";
+    case "Subtraction":
+      return "How can you show which objects were taken away and which stayed?";
+    case "Multiplication":
+      return "How many are in one group, and how many groups do you have?";
+    case "Division":
+      return "How can you prove that every group was shared fairly?";
+    case "Fractions":
+      return "Do the parts look fair? How could you check before you decide?";
+    case "Geometry":
+      return "Where do you see the square corner in your paper fold?";
+    case "Measurement":
+      return "Where does the ruler start, and where does the pencil end?";
+  }
+}
+
+function formatProgressDate(value: string | undefined) {
+  if (!value) {
+    return "Recently";
+  }
+
+  return new Intl.DateTimeFormat("en", {
+    month: "short",
+    day: "numeric",
+  }).format(new Date(`${value}T12:00:00`));
+}
+
+function buildParentReport(
+  snapshot: ReturnType<typeof getParentSnapshot>,
+  progress: ProgressState,
+) {
+  const verifiedNames = snapshot.verifiedMissions.map((mission) => mission.title);
+  const needsPracticeNames = snapshot.needsPractice.map((mission) => mission.title);
+
+  return [
+    "Math Manipulative Verifier: learning update",
+    snapshot.summary,
+    `Verified activities: ${verifiedNames.length ? verifiedNames.join(", ") : "None yet"}.`,
+    `Next activity: ${snapshot.recommendedMission.title}.`,
+    snapshot.recommendationReason,
+    `Activities to revisit: ${needsPracticeNames.length ? needsPracticeNames.join(", ") : "None right now"}.`,
+    `Current learning streak: ${progress.streak} day${progress.streak === 1 ? "" : "s"}.`,
+    "This update contains progress only. It does not include photos.",
+  ].join("\n");
 }
 
 function ProgressScreen({

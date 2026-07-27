@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { evaluateMission } from "../lib/evaluate";
 import { missions } from "../lib/missions";
 import { buildCountingPrompt, buildPrompt, schemaForMission } from "../lib/prompts";
+import { emptyProgress, getParentSnapshot } from "../lib/progress";
 
 const byId = Object.fromEntries(missions.map((mission) => [mission.id, mission]));
 
@@ -13,6 +14,33 @@ const confidentEvidence = {
 };
 
 assert.equal(missions.length, 8);
+
+const emptyParentSnapshot = getParentSnapshot(emptyProgress);
+assert.equal(emptyParentSnapshot.verifiedMissions.length, 0);
+assert.equal(emptyParentSnapshot.needsPractice.length, 0);
+assert.equal(emptyParentSnapshot.recommendedMission.id, "add-7-8");
+
+const parentSnapshotWithPractice = getParentSnapshot({
+  ...emptyProgress,
+  missions: {
+    "add-7-8": {
+      attempts: 1,
+      correct: true,
+      xpEarned: 30,
+      concept: "Addition",
+      completedAt: "2026-07-27",
+    },
+    "sub-15-to-9": {
+      attempts: 2,
+      correct: false,
+      xpEarned: 0,
+      concept: "Subtraction",
+    },
+  },
+});
+assert.equal(parentSnapshotWithPractice.verifiedMissions.length, 1);
+assert.equal(parentSnapshotWithPractice.needsPractice[0].id, "sub-15-to-9");
+assert.equal(parentSnapshotWithPractice.recommendedMission.id, "sub-15-to-9");
 
 for (const mission of missions) {
   const prompt = buildPrompt(mission);
