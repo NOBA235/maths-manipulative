@@ -3,13 +3,13 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Math Manipulative Verifier",
-  description: "Hands-on math missions verified from a photo.",
+  description: "Animated hands-on math missions verified from real evidence.",
 };
 
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  themeColor: "#fbfaf6",
+  themeColor: "#f7fbff",
 };
 
 export default function RootLayout({

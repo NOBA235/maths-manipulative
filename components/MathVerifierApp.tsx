@@ -2,24 +2,33 @@
 
 import { AnimatePresence, motion } from "framer-motion";
 import {
+  Asterisk,
   ArrowLeft,
   BarChart3,
   Camera,
   Check,
   ChevronRight,
-  ClipboardCheck,
-  ImageUp,
+  Divide,
+  Flame,
   ListChecks,
+  Minus,
+  PieChart,
+  Plus,
   RotateCcw,
+  Ruler,
+  ScanLine,
+  Shapes,
   Sparkles,
+  Star,
   Trophy,
   X,
+  Zap,
+  type LucideIcon,
 } from "lucide-react";
 import Image from "next/image";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { EvaluationResult } from "@/lib/evaluate";
 import {
-  concepts,
   missions,
   type Concept,
   type EvidenceStage,
@@ -65,13 +74,53 @@ function revokePreviews(previews: EvidencePreviews) {
 }
 
 const conceptStyles: Record<Concept, string> = {
-  Addition: "border-lake/25 bg-lake/10 text-lake",
-  Subtraction: "border-coral/25 bg-coral/10 text-coral",
-  Multiplication: "border-leaf/25 bg-leaf/10 text-leaf",
-  Division: "border-plum/25 bg-plum/10 text-plum",
-  Fractions: "border-saffron/30 bg-saffron/15 text-[#936414]",
+  Addition: "border-lake/25 bg-[#eaf3ff] text-lake",
+  Subtraction: "border-coral/25 bg-[#fff0f3] text-coral",
+  Multiplication: "border-leaf/25 bg-[#eaf8f1] text-leaf",
+  Division: "border-plum/25 bg-[#f3effc] text-plum",
+  Fractions: "border-saffron/40 bg-[#fff7d8] text-[#845f00]",
   Geometry: "border-ink/20 bg-ink/10 text-ink",
-  Measurement: "border-[#1e9e95]/25 bg-[#1e9e95]/10 text-[#16766f]",
+  Measurement: "border-aqua/25 bg-[#e8fbfa] text-aqua",
+};
+
+const conceptCardStyles: Record<Concept, string> = {
+  Addition: "border-lake/30 bg-[#f1f7ff]",
+  Subtraction: "border-coral/30 bg-[#fff5f7]",
+  Multiplication: "border-leaf/30 bg-[#f0fbf6]",
+  Division: "border-plum/30 bg-[#f7f3ff]",
+  Fractions: "border-saffron/50 bg-[#fffae8]",
+  Geometry: "border-ink/20 bg-white",
+  Measurement: "border-aqua/30 bg-[#f0fffe]",
+};
+
+const conceptAccentStyles: Record<Concept, string> = {
+  Addition: "bg-lake text-white",
+  Subtraction: "bg-coral text-white",
+  Multiplication: "bg-leaf text-white",
+  Division: "bg-plum text-white",
+  Fractions: "bg-saffron text-ink",
+  Geometry: "bg-ink text-white",
+  Measurement: "bg-aqua text-white",
+};
+
+const conceptIcons: Record<Concept, LucideIcon> = {
+  Addition: Plus,
+  Subtraction: Minus,
+  Multiplication: Asterisk,
+  Division: Divide,
+  Fractions: PieChart,
+  Geometry: Shapes,
+  Measurement: Ruler,
+};
+
+const evidenceStageAccent: Record<EvidenceStage, string> = {
+  setup: "bg-lake text-white",
+  result: "bg-plum text-white",
+};
+
+const evidenceStageSurface: Record<EvidenceStage, string> = {
+  setup: "border-lake/25 bg-[#f1f7ff]",
+  result: "border-plum/25 bg-[#f7f3ff]",
 };
 
 export default function MathVerifierApp() {
@@ -107,17 +156,6 @@ export default function MathVerifierApp() {
   const completedCount = useMemo(
     () => Object.values(progress.missions).filter((item) => item.correct).length,
     [progress.missions],
-  );
-
-  const groupedMissions = useMemo(
-    () =>
-      concepts
-        .map((concept) => ({
-          concept,
-          missions: missions.filter((mission) => mission.concept === concept),
-        }))
-        .filter((group) => group.missions.length > 0),
-    [],
   );
 
   function openMission(mission: Mission) {
@@ -269,10 +307,15 @@ export default function MathVerifierApp() {
   }
 
   return (
-    <main className="mx-auto flex min-h-screen w-full max-w-6xl flex-col px-4 pb-8 pt-4 sm:px-6 lg:px-8">
+    <main className="relative mx-auto flex min-h-screen w-full max-w-6xl flex-col px-4 pb-28 pt-3 sm:px-6 sm:pb-8 sm:pt-5 lg:px-8">
       <AppHeader
         screen={screen}
-        setScreen={setScreen}
+        setScreen={(nextScreen) => {
+          setScreen(nextScreen);
+          if (nextScreen === "missions") {
+            setSelectedMission(null);
+          }
+        }}
         completedCount={completedCount}
         totalXp={progress.totalXp}
       />
@@ -329,7 +372,6 @@ export default function MathVerifierApp() {
             transition={{ duration: 0.18 }}
           >
             <MissionList
-              groupedMissions={groupedMissions}
               progress={progress}
               onOpenMission={openMission}
             />
@@ -352,136 +394,313 @@ function AppHeader({
   totalXp: number;
 }) {
   return (
-    <header className="mb-5 flex flex-col gap-4 border-b border-ink/10 pb-4">
-      <div className="flex items-center justify-between gap-4">
+    <header className="mb-6">
+      <div className="flex min-h-20 items-center justify-between gap-3 rounded-lg border border-ink/10 bg-white px-3 py-2 shadow-lift sm:px-4">
         <div className="flex min-w-0 items-center gap-3">
-          <Image
-            src="/manipulatives.svg"
-            alt=""
-            width={96}
-            height={60}
-            className="h-14 w-20 shrink-0 rounded-lg border border-ink/10 object-cover shadow-sm"
-          />
+          <motion.div
+            animate={{ y: [0, -3, 0], rotate: [0, 1.5, 0] }}
+            transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+            className="flex h-16 w-14 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-[#fff1a8]"
+          >
+            <Image
+              src="/math-buddy.png"
+              alt=""
+              width={56}
+              height={70}
+              priority
+              className="h-[68px] w-auto object-contain pt-1"
+            />
+          </motion.div>
           <div className="min-w-0">
-            <p className="text-xs font-bold uppercase tracking-[0.14em] text-leaf">
-              Hands-on math
+            <p className="text-xs font-black uppercase tracking-[0.14em] text-lake">
+              Math Explorer
             </p>
-            <h1 className="truncate text-2xl font-black text-ink sm:text-3xl">
-              Math Manipulative Verifier
+            <h1 className="truncate text-xl font-black text-ink sm:text-2xl">
+              <span className="sm:hidden">Math Verifier</span>
+              <span className="hidden sm:inline">
+                Math Manipulative Verifier
+              </span>
             </h1>
           </div>
         </div>
-        <div className="hidden rounded-lg border border-ink/10 bg-white/70 px-4 py-3 text-right shadow-sm sm:block">
-          <p className="text-xs font-bold uppercase tracking-[0.14em] text-ink/55">
-            XP
-          </p>
-          <p className="text-2xl font-black text-ink">{totalXp}</p>
-        </div>
+        <motion.div
+          key={totalXp}
+          initial={{ scale: 0.82, rotate: -5 }}
+          animate={{ scale: 1, rotate: 0 }}
+          className="flex min-h-12 shrink-0 items-center gap-2 rounded-lg border border-saffron/60 bg-[#fff7d8] px-3 text-ink shadow-button"
+        >
+          <Zap className="fill-saffron text-[#a87000]" size={19} />
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-[0.14em] text-ink/50">
+              XP
+            </p>
+            <p className="text-lg font-black leading-none">{totalXp}</p>
+          </div>
+        </motion.div>
       </div>
 
-      <nav className="grid grid-cols-2 gap-2 rounded-lg border border-ink/10 bg-white/65 p-1 shadow-sm">
-        <button
-          type="button"
+      <nav className="fixed inset-x-3 bottom-3 z-50 grid grid-cols-2 gap-1 rounded-lg border border-ink/10 bg-white/95 p-1 shadow-lift backdrop-blur sm:static sm:mt-3 sm:bg-white/80 sm:shadow-sm">
+        <HeaderNavButton
+          active={screen === "missions"}
+          icon={ListChecks}
+          label="Missions"
           onClick={() => setScreen("missions")}
-          className={`flex min-h-11 items-center justify-center gap-2 rounded-md px-3 text-sm font-bold transition ${
-            screen === "missions"
-              ? "bg-ink text-white shadow-sm"
-              : "text-ink/70 hover:bg-white"
-          }`}
-        >
-          <ListChecks size={18} />
-          Missions
-        </button>
-        <button
-          type="button"
+        />
+        <HeaderNavButton
+          active={screen === "progress"}
+          icon={BarChart3}
+          label="Progress"
+          suffix={`${completedCount}/${missions.length}`}
           onClick={() => setScreen("progress")}
-          className={`flex min-h-11 items-center justify-center gap-2 rounded-md px-3 text-sm font-bold transition ${
-            screen === "progress"
-              ? "bg-ink text-white shadow-sm"
-              : "text-ink/70 hover:bg-white"
-          }`}
-        >
-          <BarChart3 size={18} />
-          Progress
-          <span className="rounded bg-white/20 px-1.5 py-0.5 text-xs">
-            {completedCount}/{missions.length}
-          </span>
-        </button>
+        />
       </nav>
     </header>
   );
 }
 
+function HeaderNavButton({
+  active,
+  icon: Icon,
+  label,
+  suffix,
+  onClick,
+}: {
+  active: boolean;
+  icon: LucideIcon;
+  label: string;
+  suffix?: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`relative flex min-h-12 items-center justify-center gap-2 overflow-hidden rounded-md px-3 text-sm font-black transition ${
+        active ? "text-white" : "text-ink/60 hover:bg-paper"
+      }`}
+    >
+      {active ? (
+        <motion.span
+          layoutId="active-navigation"
+          className="absolute inset-0 bg-ink"
+          transition={{ type: "spring", stiffness: 420, damping: 34 }}
+        />
+      ) : null}
+      <span className="relative flex items-center gap-2">
+        <Icon size={19} />
+        {label}
+        {suffix ? (
+          <span
+            className={`rounded-md px-1.5 py-0.5 text-xs ${
+              active ? "bg-white/20 text-white" : "bg-ink/10 text-ink/60"
+            }`}
+          >
+            {suffix}
+          </span>
+        ) : null}
+      </span>
+    </button>
+  );
+}
+
 function MissionList({
-  groupedMissions,
   progress,
   onOpenMission,
 }: {
-  groupedMissions: { concept: Concept; missions: Mission[] }[];
   progress: ProgressState;
   onOpenMission: (mission: Mission) => void;
 }) {
-  return (
-    <section className="space-y-6">
-      {groupedMissions.map((group) => (
-        <div key={group.concept} className="space-y-3">
-          <div className="flex items-center justify-between gap-3">
-            <h2 className="text-lg font-black text-ink">{group.concept}</h2>
-            <span
-              className={`rounded-md border px-2.5 py-1 text-xs font-black ${conceptStyles[group.concept]}`}
-            >
-              {group.missions.length} mission{group.missions.length === 1 ? "" : "s"}
-            </span>
-          </div>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {group.missions.map((mission) => {
-              const done = progress.missions[mission.id]?.correct;
+  const completed = Object.values(progress.missions).filter(
+    (item) => item.correct,
+  ).length;
+  const nextMission =
+    missions.find((mission) => !progress.missions[mission.id]?.correct) ??
+    missions[0];
 
-              return (
-                <motion.button
-                  key={mission.id}
-                  type="button"
-                  whileTap={{ scale: 0.98 }}
-                  onClick={() => onOpenMission(mission)}
-                  className="group min-h-40 rounded-lg border border-ink/10 bg-white/78 p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-soft focus-visible:focus-ring"
-                >
-                  <div className="mb-4 flex items-start justify-between gap-3">
-                    <span
-                      className={`rounded-md border px-2.5 py-1 text-xs font-black ${conceptStyles[mission.concept]}`}
+  return (
+    <section className="space-y-7">
+      <ExplorerBanner
+        completed={completed}
+        nextMission={nextMission}
+        onStart={() => onOpenMission(nextMission)}
+      />
+
+      <div>
+        <div className="mb-4 flex items-end justify-between gap-4">
+          <div>
+            <p className="text-xs font-black uppercase tracking-[0.14em] text-coral">
+              Mission Trail
+            </p>
+            <h2 className="mt-1 text-2xl font-black text-ink">
+              Pick Your Next Challenge
+            </h2>
+          </div>
+          <span className="shrink-0 rounded-md border border-ink/10 bg-white px-2.5 py-1.5 text-xs font-black text-ink/60 shadow-sm">
+            {completed}/{missions.length} complete
+          </span>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {missions.map((mission, index) => {
+            const done = progress.missions[mission.id]?.correct;
+            const Icon = conceptIcons[mission.concept];
+
+            return (
+              <motion.button
+                key={mission.id}
+                type="button"
+                initial={{ opacity: 0, y: 20, rotate: index % 2 ? 1 : -1 }}
+                animate={{ opacity: 1, y: 0, rotate: 0 }}
+                transition={{
+                  delay: index * 0.055,
+                  type: "spring",
+                  stiffness: 250,
+                  damping: 22,
+                }}
+                whileHover={{ y: -6, rotate: index % 2 ? 0.8 : -0.8 }}
+                whileTap={{ y: 1, scale: 0.98 }}
+                onClick={() => onOpenMission(mission)}
+                className={`group flex min-h-[230px] flex-col overflow-hidden rounded-lg border p-4 text-left shadow-button transition-shadow hover:shadow-lift focus-visible:focus-ring ${conceptCardStyles[mission.concept]}`}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <motion.div
+                    whileHover={{ rotate: [0, -8, 8, 0], scale: 1.08 }}
+                    transition={{ duration: 0.4 }}
+                    className={`flex h-12 w-12 items-center justify-center rounded-lg shadow-sm ${conceptAccentStyles[mission.concept]}`}
+                  >
+                    <Icon size={25} strokeWidth={2.6} />
+                  </motion.div>
+                  {done ? (
+                    <motion.div
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      transition={{ type: "spring", delay: 0.1 + index * 0.04 }}
+                      className="flex h-9 w-9 items-center justify-center rounded-lg bg-leaf text-white shadow-sm"
+                      title="Mission mastered"
                     >
+                      <Check size={20} strokeWidth={3} />
+                    </motion.div>
+                  ) : (
+                    <span className="rounded-md border border-ink/10 bg-white/70 px-2 py-1 text-xs font-black text-ink/50">
                       {mission.grade}
                     </span>
-                    <span className="flex items-center gap-1 rounded-md bg-saffron/20 px-2 py-1 text-xs font-black text-[#7b5513]">
-                      <Trophy size={14} />
-                      {mission.xp} XP
-                    </span>
-                  </div>
-                  <div className="flex items-start gap-3">
-                    <div
-                      className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border ${conceptStyles[mission.concept]}`}
-                    >
-                      {done ? <Check size={20} /> : <ClipboardCheck size={20} />}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <h3 className="text-base font-black text-ink">
-                        {mission.title}
-                      </h3>
-                      <p className="mt-1 line-clamp-3 text-sm leading-5 text-ink/68">
-                        {mission.instruction}
-                      </p>
-                    </div>
+                  )}
+                </div>
+
+                <p className="mt-4 text-[11px] font-black uppercase tracking-[0.14em] text-ink/40">
+                  Mission {index + 1} | {mission.concept}
+                </p>
+                <h3 className="mt-1 text-lg font-black leading-6 text-ink">
+                  {mission.title}
+                </h3>
+                <p className="mt-2 line-clamp-2 text-sm leading-5 text-ink/60">
+                  {mission.instruction}
+                </p>
+
+                <div className="mt-auto flex items-center justify-between gap-3 border-t border-ink/10 pt-3">
+                  <span className="flex items-center gap-1.5 text-xs font-black text-[#855f00]">
+                    <Star className="fill-saffron text-[#a87000]" size={16} />
+                    {mission.xp} XP
+                  </span>
+                  <span className="flex items-center gap-1 text-xs font-black text-ink/60">
+                    {done ? "Replay" : "Start"}
                     <ChevronRight
-                      className="mt-2 shrink-0 text-ink/35 transition group-hover:translate-x-0.5 group-hover:text-ink"
-                      size={20}
+                      className="transition-transform group-hover:translate-x-1"
+                      size={17}
                     />
-                  </div>
-                </motion.button>
-              );
-            })}
-          </div>
+                  </span>
+                </div>
+              </motion.button>
+            );
+          })}
         </div>
-      ))}
+      </div>
     </section>
+  );
+}
+
+function ExplorerBanner({
+  completed,
+  nextMission,
+  onStart,
+}: {
+  completed: number;
+  nextMission: Mission;
+  onStart: () => void;
+}) {
+  const percent = (completed / missions.length) * 100;
+  const remaining = missions.length - completed;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 14 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="relative min-h-[230px] overflow-hidden rounded-lg border border-saffron/70 bg-[#fff0a8] px-5 py-5 shadow-lift sm:min-h-[190px] sm:px-7"
+    >
+      <motion.div
+        animate={{ rotate: [0, 14, 0], y: [0, -5, 0] }}
+        transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+        className="absolute left-[47%] top-5 text-[#c78b00]/30"
+      >
+        <Star size={25} />
+      </motion.div>
+      <motion.div
+        animate={{ rotate: [0, -10, 0], x: [0, 4, 0] }}
+        transition={{ duration: 3.4, repeat: Infinity, ease: "easeInOut" }}
+        className="absolute bottom-6 left-[52%] text-coral/25"
+      >
+        <Plus size={30} strokeWidth={3} />
+      </motion.div>
+
+      <div className="relative z-10 max-w-[58%] sm:max-w-[64%]">
+        <p className="text-xs font-black uppercase tracking-[0.14em] text-[#8b6200]">
+          {completed === missions.length ? "Trail Complete" : "Up Next"}
+        </p>
+        <h2 className="mt-1 text-xl font-black leading-7 text-ink sm:text-3xl sm:leading-9">
+          {completed === missions.length
+            ? "Amazing Work, Explorer!"
+            : nextMission.title}
+        </h2>
+        <p className="mt-1 text-sm font-bold leading-5 text-ink/60">
+          {remaining === 0
+            ? "Every mission is mastered. Replay any challenge."
+            : `${remaining} mission${remaining === 1 ? "" : "s"} left on your trail.`}
+        </p>
+
+        <div className="mt-4 max-w-xs">
+          <div className="h-3 overflow-hidden rounded-full border border-ink/10 bg-white/70">
+            <motion.div
+              initial={{ width: 0 }}
+              animate={{ width: `${percent}%` }}
+              transition={{ duration: 0.8, ease: "easeOut" }}
+              className="h-full bg-leaf"
+            />
+          </div>
+          <button
+            type="button"
+            onClick={onStart}
+            className="mt-3 flex min-h-11 items-center gap-2 rounded-lg bg-ink px-4 text-sm font-black text-white shadow-button transition hover:-translate-y-0.5 hover:bg-black active:translate-y-1 active:shadow-none focus-visible:focus-ring"
+          >
+            <Zap size={17} />
+            {remaining === 0 ? "Replay Trail" : "Start Next"}
+          </button>
+        </div>
+      </div>
+
+      <motion.div
+        animate={{ y: [4, -4, 4], rotate: [0, -1.5, 0] }}
+        transition={{ duration: 3.2, repeat: Infinity, ease: "easeInOut" }}
+        className="absolute -bottom-7 -right-1 w-[120px] sm:-bottom-8 sm:right-5 sm:w-[175px]"
+      >
+        <Image
+          src="/math-buddy.png"
+          alt=""
+          width={560}
+          height={700}
+          className="h-auto w-full object-contain"
+        />
+      </motion.div>
+    </motion.div>
   );
 }
 
@@ -523,11 +742,14 @@ function MissionDetail({
 
   return (
     <section className="mx-auto grid max-w-6xl gap-4 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
-      <div className="rounded-lg border border-ink/10 bg-white/82 p-4 shadow-sm sm:p-5">
+      <div className="relative overflow-hidden rounded-lg border border-ink/10 bg-white p-4 shadow-lift sm:p-5">
+        <div
+          className={`absolute inset-x-0 top-0 h-2 ${conceptAccentStyles[mission.concept]}`}
+        />
         <button
           type="button"
           onClick={onBack}
-          className="mb-4 inline-flex min-h-10 items-center gap-2 rounded-md border border-ink/10 bg-white px-3 text-sm font-bold text-ink transition hover:bg-ink hover:text-white focus-visible:focus-ring"
+          className="mb-4 mt-1 inline-flex min-h-10 items-center gap-2 rounded-md border border-ink/10 bg-paper px-3 text-sm font-black text-ink shadow-sm transition hover:-translate-y-0.5 hover:bg-ink hover:text-white focus-visible:focus-ring"
         >
           <ArrowLeft size={18} />
           Missions
@@ -546,7 +768,7 @@ function MissionDetail({
             {mission.xp} XP
           </span>
           {completed ? (
-            <span className="rounded-md bg-leaf/12 px-2.5 py-1 text-xs font-black text-leaf">
+            <span className="rounded-md bg-leaf/10 px-2.5 py-1 text-xs font-black text-leaf">
               Mastered
             </span>
           ) : null}
@@ -555,25 +777,29 @@ function MissionDetail({
         <h2 className="mt-4 text-2xl font-black leading-tight text-ink sm:text-3xl">
           {mission.title}
         </h2>
-        <p className="mt-3 text-base leading-7 text-ink/72">{mission.instruction}</p>
+        <p className="mt-3 text-base leading-7 text-ink/70">{mission.instruction}</p>
 
         <div className="mt-5 divide-y divide-ink/10 border-y border-ink/10">
           {(["setup", "result"] as EvidenceStage[]).map((stage, index) => (
-            <div key={stage} className="flex gap-3 py-4">
-              <div
-                className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-md border text-sm font-black ${conceptStyles[mission.concept]}`}
-              >
+            <motion.div
+              key={stage}
+              initial={{ opacity: 0, x: -12 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.08 + index * 0.08 }}
+              className="flex gap-3 py-4"
+            >
+              <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-sm font-black shadow-sm ${evidenceStageAccent[stage]}`}>
                 {index + 1}
               </div>
               <div>
                 <h3 className="text-sm font-black text-ink">
                   {mission.evidence[stage].title}
                 </h3>
-                <p className="mt-1 text-sm leading-5 text-ink/65">
+                <p className="mt-1 text-sm leading-5 text-ink/60">
                   {mission.evidence[stage].instruction}
                 </p>
               </div>
-            </div>
+            </motion.div>
           ))}
         </div>
 
@@ -586,21 +812,21 @@ function MissionDetail({
           onChange={(event) => setPrediction(event.target.value)}
           inputMode={mission.promptMode === "measurement" ? "decimal" : "text"}
           placeholder="Optional"
-          className="mt-2 h-12 w-full rounded-lg border border-ink/12 bg-white px-3 text-base font-semibold text-ink outline-none transition placeholder:text-ink/35 focus:border-lake focus:ring-4 focus:ring-lake/15"
+          className="mt-2 h-12 w-full rounded-lg border-2 border-ink/10 bg-paper px-3 text-base font-bold text-ink outline-none transition placeholder:text-ink/30 focus:border-lake focus:bg-white focus:ring-4 focus:ring-lake/20"
         />
 
         <button
           type="button"
           onClick={onVerify}
           disabled={!canVerify || checking}
-          className="mt-5 flex min-h-12 w-full items-center justify-center gap-2 rounded-lg bg-ink px-3 text-sm font-black text-white shadow-sm transition enabled:hover:bg-black disabled:cursor-not-allowed disabled:bg-ink/30"
+          className="mt-5 flex min-h-12 w-full items-center justify-center gap-2 rounded-lg bg-ink px-3 text-sm font-black text-white shadow-button transition enabled:hover:-translate-y-0.5 enabled:hover:bg-black enabled:active:translate-y-1 enabled:active:shadow-none disabled:cursor-not-allowed disabled:bg-ink/30"
         >
           {checking ? (
             <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
           ) : (
-            <ImageUp size={18} />
+            <ScanLine size={19} />
           )}
-          Verify Both Steps
+          {checking ? "Checking Your Work..." : "Verify Both Steps"}
         </button>
       </div>
 
@@ -614,6 +840,7 @@ function MissionDetail({
               stepNumber={index + 1}
               file={evidenceFiles[stage]}
               previewUrl={evidencePreviews[stage]}
+              checking={checking}
               onPhotoChange={onPhotoChange}
             />
           ))}
@@ -641,6 +868,7 @@ function EvidenceCapture({
   stepNumber,
   file,
   previewUrl,
+  checking,
   onPhotoChange,
 }: {
   mission: Mission;
@@ -648,22 +876,26 @@ function EvidenceCapture({
   stepNumber: number;
   file: File | null;
   previewUrl: string | null;
+  checking: boolean;
   onPhotoChange: (stage: EvidenceStage, file: File | undefined) => void;
 }) {
   const inputId = `${stage}-photo-${mission.id}`;
   const checkpoint = mission.evidence[stage];
 
   return (
-    <div className="overflow-hidden rounded-lg border border-ink/10 bg-white/82 shadow-sm">
+    <motion.div
+      initial={{ opacity: 0, y: 16, rotate: stage === "setup" ? -1 : 1 }}
+      animate={{ opacity: 1, y: 0, rotate: 0 }}
+      transition={{ type: "spring", stiffness: 240, damping: 22 }}
+      className={`overflow-hidden rounded-lg border shadow-button ${evidenceStageSurface[stage]}`}
+    >
       <div className="flex min-h-16 items-center justify-between gap-3 border-b border-ink/10 px-4 py-3">
         <div className="flex min-w-0 items-center gap-3">
-          <div
-            className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-md border text-sm font-black ${conceptStyles[mission.concept]}`}
-          >
+          <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-sm font-black shadow-sm ${evidenceStageAccent[stage]}`}>
             {stepNumber}
           </div>
           <div className="min-w-0">
-            <p className="text-xs font-black uppercase tracking-[0.14em] text-ink/45">
+            <p className="text-xs font-black uppercase tracking-[0.14em] text-ink/50">
               {stage}
             </p>
             <h3 className="truncate text-sm font-black text-ink">
@@ -671,17 +903,22 @@ function EvidenceCapture({
             </h3>
           </div>
         </div>
-        {file ? (
-          <div
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-leaf/12 text-leaf"
-            title="Photo captured"
-          >
-            <Check size={18} />
-          </div>
-        ) : null}
+        <AnimatePresence>
+          {file ? (
+            <motion.div
+              initial={{ scale: 0, rotate: -18 }}
+              animate={{ scale: 1, rotate: 0 }}
+              exit={{ scale: 0 }}
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-leaf text-white shadow-sm"
+              title="Photo captured"
+            >
+              <Check size={18} strokeWidth={3} />
+            </motion.div>
+          ) : null}
+        </AnimatePresence>
       </div>
 
-      <div className="aspect-[4/3] w-full bg-chalk/70">
+      <div className="relative aspect-[4/3] w-full overflow-hidden bg-white/60">
         {previewUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -690,18 +927,45 @@ function EvidenceCapture({
             className="h-full w-full object-cover"
           />
         ) : (
-          <div className="flex h-full min-h-[220px] flex-col items-center justify-center border-b border-dashed border-ink/15 px-6 text-center text-ink/50">
-            <Camera size={38} />
+          <div className="flex h-full flex-col items-center justify-center border-b border-dashed border-ink/20 px-4 text-center text-ink/50 sm:px-6">
+            <motion.div
+              animate={{ y: [0, -5, 0], rotate: [0, -3, 3, 0] }}
+              transition={{ duration: 2.8, repeat: Infinity, ease: "easeInOut" }}
+              className={`flex h-14 w-14 items-center justify-center rounded-lg ${evidenceStageAccent[stage]}`}
+            >
+              <Camera size={28} />
+            </motion.div>
             <p className="mt-3 text-sm font-bold leading-5">
               {checkpoint.instruction}
             </p>
           </div>
         )}
+        {checking && previewUrl ? (
+          <>
+            <div className="absolute inset-0 bg-ink/10" />
+            <motion.div
+              initial={{ top: "5%" }}
+              animate={{ top: ["5%", "92%", "5%"] }}
+              transition={{ duration: 1.8, repeat: Infinity, ease: "easeInOut" }}
+              className="absolute inset-x-0 h-1 bg-saffron shadow-[0_0_12px_rgba(255,200,61,0.9)]"
+            />
+            <div className="absolute left-3 top-3 flex items-center gap-2 rounded-md bg-ink px-2.5 py-1.5 text-xs font-black text-white shadow-sm">
+              <ScanLine size={15} />
+              Scanning
+            </div>
+          </>
+        ) : null}
       </div>
 
       <label
         htmlFor={inputId}
-        className="flex min-h-12 cursor-pointer items-center justify-center gap-2 px-3 text-sm font-black text-lake transition hover:bg-lake/10"
+        className={`flex min-h-12 cursor-pointer items-center justify-center gap-2 px-3 text-sm font-black transition ${
+          checking
+            ? "pointer-events-none opacity-50"
+            : stage === "setup"
+              ? "text-lake hover:bg-lake/10"
+              : "text-plum hover:bg-plum/10"
+        }`}
       >
         <Camera size={18} />
         {file ? "Replace Photo" : "Capture Photo"}
@@ -714,7 +978,7 @@ function EvidenceCapture({
         className="sr-only"
         onChange={(event) => onPhotoChange(stage, event.target.files?.[0])}
       />
-    </div>
+    </motion.div>
   );
 }
 
@@ -739,13 +1003,14 @@ function FeedbackPanel({
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 14 }}
-      animate={{ opacity: 1, y: 0 }}
-      className={`rounded-lg border p-4 shadow-sm ${
+      initial={{ opacity: 0, y: 18, scale: 0.97 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      transition={{ type: "spring", stiffness: 260, damping: 22 }}
+      className={`rounded-lg border p-4 shadow-lift ${
         correct
           ? "border-leaf/25 bg-leaf/10"
           : retake
-            ? "border-saffron/30 bg-saffron/15"
+            ? "border-saffron/30 bg-saffron/20"
             : "border-coral/25 bg-coral/10"
       }`}
     >
@@ -753,13 +1018,21 @@ function FeedbackPanel({
         {correct ? (
           <SuccessMark />
         ) : retake ? (
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-saffron/25 text-[#7b5513]">
+          <motion.div
+            animate={{ y: [0, -3, 0] }}
+            transition={{ duration: 2, repeat: Infinity }}
+            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-saffron/25 text-[#7b5513]"
+          >
             <Camera size={24} />
-          </div>
+          </motion.div>
         ) : (
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-coral/15 text-coral">
+          <motion.div
+            initial={{ rotate: -12, scale: 0.8 }}
+            animate={{ rotate: 0, scale: 1 }}
+            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-coral/20 text-coral"
+          >
             <X size={24} />
-          </div>
+          </motion.div>
         )}
         <div className="min-w-0 flex-1">
           <h3 className="text-lg font-black text-ink">
@@ -769,7 +1042,7 @@ function FeedbackPanel({
                 ? "Clearer Evidence Needed"
                 : "Check the Highlighted Step"}
           </h3>
-          <p className="mt-1 text-sm leading-6 text-ink/72">{result.explanation}</p>
+          <p className="mt-1 text-sm leading-6 text-ink/70">{result.explanation}</p>
         </div>
       </div>
 
@@ -790,7 +1063,7 @@ function FeedbackPanel({
           <p className="mt-1 text-sm font-bold text-ink">
             {result.prediction.value}
           </p>
-          <p className="mt-1 text-sm text-ink/68">{result.prediction.message}</p>
+          <p className="mt-1 text-sm text-ink/70">{result.prediction.message}</p>
         </div>
       ) : null}
 
@@ -800,7 +1073,7 @@ function FeedbackPanel({
             <p className="text-sm font-black text-ink">
               {recentXp > 0 ? `+${recentXp} XP earned` : `${mission.title} mastered`}
             </p>
-            <p className="text-sm font-black text-ink/65">{progress.totalXp} XP</p>
+            <p className="text-sm font-black text-ink/60">{progress.totalXp} XP</p>
           </div>
           <div className="mt-2 h-3 overflow-hidden rounded-full bg-ink/10">
             <motion.div
@@ -817,7 +1090,7 @@ function FeedbackPanel({
         <button
           type="button"
           onClick={onRetry}
-          className="flex min-h-11 items-center justify-center gap-2 rounded-lg border border-ink/10 bg-white px-3 text-sm font-black text-ink transition hover:bg-ink hover:text-white focus-visible:focus-ring"
+          className="flex min-h-11 items-center justify-center gap-2 rounded-lg border border-ink/10 bg-white px-3 text-sm font-black text-ink shadow-button transition hover:-translate-y-0.5 hover:bg-ink hover:text-white active:translate-y-1 active:shadow-none focus-visible:focus-ring"
         >
           <RotateCcw size={18} />
           {correct ? "Review Again" : "Redo Highlighted"}
@@ -825,7 +1098,7 @@ function FeedbackPanel({
         <button
           type="button"
           onClick={onNext}
-          className="flex min-h-11 items-center justify-center gap-2 rounded-lg bg-ink px-3 text-sm font-black text-white transition hover:bg-black focus-visible:focus-ring"
+          className="flex min-h-11 items-center justify-center gap-2 rounded-lg bg-ink px-3 text-sm font-black text-white shadow-button transition hover:-translate-y-0.5 hover:bg-black active:translate-y-1 active:shadow-none focus-visible:focus-ring"
         >
           <ChevronRight size={18} />
           Next
@@ -844,14 +1117,18 @@ function CheckpointFeedback({
   const retake = checkpoint.status === "retake";
 
   return (
-    <div className="flex gap-3 py-4">
+    <motion.div
+      initial={{ opacity: 0, x: -10 }}
+      animate={{ opacity: 1, x: 0 }}
+      className="flex gap-3 py-4"
+    >
       <div
         className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-md ${
           correct
-            ? "bg-leaf/15 text-leaf"
+            ? "bg-leaf/20 text-leaf"
             : retake
               ? "bg-saffron/25 text-[#7b5513]"
-              : "bg-coral/15 text-coral"
+              : "bg-coral/20 text-coral"
         }`}
       >
         {correct ? (
@@ -863,13 +1140,13 @@ function CheckpointFeedback({
         )}
       </div>
       <div className="min-w-0 flex-1">
-        <p className="text-xs font-black uppercase tracking-[0.14em] text-ink/45">
+        <p className="text-xs font-black uppercase tracking-[0.14em] text-ink/50">
           {checkpoint.stage} checkpoint
         </p>
         <h4 className="mt-0.5 text-sm font-black text-ink">
           {checkpoint.title}
         </h4>
-        <p className="mt-1 text-sm leading-5 text-ink/68">
+        <p className="mt-1 text-sm leading-5 text-ink/70">
           {checkpoint.explanation}
         </p>
         <div className="mt-2 grid gap-2 text-xs sm:grid-cols-2">
@@ -883,7 +1160,7 @@ function CheckpointFeedback({
           </p>
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 }
 
@@ -893,7 +1170,9 @@ function SuccessMark() {
       {Array.from({ length: 8 }).map((_, index) => (
         <motion.span
           key={index}
-          className="absolute h-1.5 w-1.5 rounded-full bg-leaf"
+          className={`absolute h-1.5 w-2 rounded-sm ${
+            index % 2 ? "bg-saffron" : "bg-leaf"
+          }`}
           initial={{ opacity: 0, scale: 0, x: 0, y: 0 }}
           animate={{
             opacity: [0, 1, 0],
@@ -916,22 +1195,15 @@ function SuccessMark() {
   );
 }
 
-function FactTile({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-lg border border-ink/10 bg-white/75 p-3">
-      <p className="text-xs font-black uppercase tracking-[0.14em] text-ink/50">
-        {label}
-      </p>
-      <p className="mt-1 text-sm font-black leading-5 text-ink">{value}</p>
-    </div>
-  );
-}
-
 function ErrorPanel({ message }: { message: string }) {
   return (
-    <div className="rounded-lg border border-coral/25 bg-coral/10 p-4 text-sm font-bold leading-6 text-ink">
+    <motion.div
+      initial={{ opacity: 0, x: -10 }}
+      animate={{ opacity: 1, x: 0 }}
+      className="rounded-lg border border-coral/25 bg-coral/10 p-4 text-sm font-bold leading-6 text-ink shadow-sm"
+    >
       {message}
-    </div>
+    </motion.div>
   );
 }
 
@@ -945,102 +1217,232 @@ function ProgressScreen({
   const badges = getBadges(progress);
   const mastery = getMastery(progress);
   const completed = Object.values(progress.missions).filter((item) => item.correct);
-  const levelPercent = progress.totalXp % 100;
+  const badgeSurfaces = [
+    "border-lake/30 bg-[#f1f7ff] text-lake",
+    "border-coral/30 bg-[#fff3f6] text-coral",
+    "border-leaf/30 bg-[#effaf5] text-leaf",
+    "border-plum/30 bg-[#f6f2ff] text-plum",
+    "border-saffron/50 bg-[#fff9df] text-[#8b6200]",
+  ];
 
   return (
-    <section className="grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
-      <div className="space-y-4">
-        <div className="rounded-lg border border-ink/10 bg-white/82 p-5 shadow-sm">
-          <div className="flex items-start justify-between gap-4">
+    <section className="space-y-7">
+      <ProgressHero
+        totalXp={progress.totalXp}
+        streak={progress.streak}
+        completed={completed.length}
+      />
+
+      <div className="grid gap-7 lg:grid-cols-[0.9fr_1.1fr]">
+        <section>
+          <div className="mb-4 flex items-center justify-between gap-3">
             <div>
-              <p className="text-xs font-black uppercase tracking-[0.14em] text-leaf">
-                Total XP
+              <p className="text-xs font-black uppercase tracking-[0.14em] text-plum">
+                Trophy Shelf
               </p>
-              <h2 className="mt-1 text-5xl font-black text-ink">{progress.totalXp}</h2>
+              <h2 className="mt-1 text-2xl font-black text-ink">Your Badges</h2>
             </div>
-            <div className="flex h-14 w-14 items-center justify-center rounded-lg bg-saffron/20 text-[#7b5513]">
-              <Trophy size={30} />
-            </div>
+            <Sparkles className="text-plum" size={24} />
           </div>
-          <div className="mt-5 h-3 overflow-hidden rounded-full bg-ink/10">
+
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
+            {badges.map((badge, index) => (
+              <motion.div
+                key={badge.id}
+                initial={{ opacity: 0, x: -16 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: index * 0.07 }}
+                whileHover={badge.earned ? { y: -3, rotate: -0.5 } : undefined}
+                className={`flex min-h-20 items-center gap-3 rounded-lg border p-3 shadow-sm ${
+                  badge.earned
+                    ? badgeSurfaces[index % badgeSurfaces.length]
+                    : "border-ink/10 bg-white text-ink/40"
+                }`}
+              >
+                <motion.div
+                  animate={
+                    badge.earned
+                      ? { rotate: [0, -7, 7, 0], scale: [1, 1.08, 1] }
+                      : undefined
+                  }
+                  transition={{ duration: 0.55, delay: 0.3 + index * 0.08 }}
+                  className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-lg ${
+                    badge.earned ? "bg-white/70" : "bg-ink/5"
+                  }`}
+                >
+                  {badge.earned ? (
+                    <Trophy size={24} />
+                  ) : (
+                    <Star size={23} />
+                  )}
+                </motion.div>
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-[0.14em] opacity-60">
+                    {badge.earned ? "Unlocked" : "Keep Exploring"}
+                  </p>
+                  <h3 className="mt-0.5 text-sm font-black">{badge.title}</h3>
+                </div>
+                {badge.earned ? (
+                  <Check className="ml-auto shrink-0" size={19} strokeWidth={3} />
+                ) : null}
+              </motion.div>
+            ))}
+          </div>
+
+          <button
+            type="button"
+            onClick={onReset}
+            className="mt-4 flex min-h-11 w-full items-center justify-center gap-2 rounded-lg border border-ink/10 bg-white px-3 text-sm font-black text-ink/60 shadow-sm transition hover:border-coral/30 hover:bg-[#fff3f6] hover:text-coral focus-visible:focus-ring"
+          >
+            <RotateCcw size={18} />
+            Reset Progress
+          </button>
+        </section>
+
+        <section>
+          <div className="mb-4">
+            <p className="text-xs font-black uppercase tracking-[0.14em] text-aqua">
+              Skill Map
+            </p>
+            <h2 className="mt-1 text-2xl font-black text-ink">
+              Concept Mastery
+            </h2>
+          </div>
+
+          <div className="grid gap-3">
+          {mastery.map((item) => {
+            const percent = item.total ? (item.completed / item.total) * 100 : 0;
+            const Icon = conceptIcons[item.concept];
+
+            return (
+              <motion.div
+                key={item.concept}
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                whileHover={{ x: 3 }}
+                className={`rounded-lg border p-4 shadow-sm ${conceptCardStyles[item.concept]}`}
+              >
+                <div className="flex items-center gap-3">
+                  <div
+                    className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${conceptAccentStyles[item.concept]}`}
+                  >
+                    <Icon size={21} />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center justify-between gap-3">
+                      <h3 className="text-sm font-black text-ink">
+                        {item.concept}
+                      </h3>
+                      <span className="text-xs font-black text-ink/50">
+                        {item.completed}/{item.total}
+                      </span>
+                    </div>
+                    <div className="mt-2 h-3 overflow-hidden rounded-full border border-ink/10 bg-white/75">
+                      <motion.div
+                        initial={{ width: 0 }}
+                        animate={{ width: `${percent}%` }}
+                        transition={{
+                          duration: 0.7,
+                          delay: 0.08,
+                          ease: "easeOut",
+                        }}
+                        className={`h-full ${conceptAccentStyles[item.concept]}`}
+                      />
+                    </div>
+                  </div>
+                </div>
+                <div className="mt-2 flex justify-end">
+                  <span className="text-xs font-black text-ink/50">
+                    {item.attempts} attempt{item.attempts === 1 ? "" : "s"}
+                  </span>
+                </div>
+              </motion.div>
+            );
+          })}
+          </div>
+        </section>
+      </div>
+    </section>
+  );
+}
+
+function ProgressHero({
+  totalXp,
+  streak,
+  completed,
+}: {
+  totalXp: number;
+  streak: number;
+  completed: number;
+}) {
+  const level = Math.floor(totalXp / 100) + 1;
+  const levelPercent = totalXp % 100;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 15 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="relative min-h-[200px] overflow-hidden rounded-lg border border-lake/25 bg-[#dcecff] p-5 shadow-lift sm:p-7"
+    >
+      <motion.div
+        animate={{ rotate: [0, 10, 0], scale: [1, 1.08, 1] }}
+        transition={{ duration: 3.8, repeat: Infinity }}
+        className="absolute left-[48%] top-6 text-lake/20"
+      >
+        <Sparkles size={31} />
+      </motion.div>
+
+      <div className="relative z-10 max-w-[58%] sm:max-w-[66%]">
+        <p className="text-xs font-black uppercase tracking-[0.14em] text-lake">
+          Explorer Level {level}
+        </p>
+        <div className="mt-1 flex items-end gap-2">
+          <motion.h2
+            key={totalXp}
+            initial={{ scale: 0.8 }}
+            animate={{ scale: 1 }}
+            className="text-5xl font-black leading-none text-ink"
+          >
+            {totalXp}
+          </motion.h2>
+          <span className="pb-1 text-sm font-black text-ink/50">total XP</span>
+        </div>
+
+        <div className="mt-4 max-w-sm">
+          <div className="h-3 overflow-hidden rounded-full border border-ink/10 bg-white/75">
             <motion.div
               initial={{ width: 0 }}
               animate={{ width: `${levelPercent}%` }}
-              className="h-full rounded-full bg-saffron"
+              transition={{ duration: 0.8, ease: "easeOut" }}
+              className="h-full bg-saffron"
             />
           </div>
-          <div className="mt-4 grid grid-cols-2 gap-3">
-            <FactTile label="Streak" value={`${progress.streak} day`} />
-            <FactTile label="Mastered" value={`${completed.length}/${missions.length}`} />
+          <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2 text-xs font-black text-ink/60">
+            <span className="flex items-center gap-1.5">
+              <Flame className="fill-coral text-coral" size={17} />
+              {streak} day{streak === 1 ? "" : "s"} streak
+            </span>
+            <span className="flex items-center gap-1.5">
+              <Trophy className="text-[#9a6b00]" size={17} />
+              {completed}/{missions.length} mastered
+            </span>
           </div>
         </div>
-
-        <div className="rounded-lg border border-ink/10 bg-white/82 p-5 shadow-sm">
-          <div className="mb-3 flex items-center justify-between gap-3">
-            <h2 className="text-lg font-black text-ink">Badges</h2>
-            <Sparkles className="text-plum" size={22} />
-          </div>
-          <div className="grid gap-2">
-            {badges.map((badge) => (
-              <div
-                key={badge.id}
-                className={`flex min-h-12 items-center justify-between rounded-lg border px-3 ${
-                  badge.earned
-                    ? "border-leaf/25 bg-leaf/10 text-leaf"
-                    : "border-ink/10 bg-white/70 text-ink/40"
-                }`}
-              >
-                <span className="text-sm font-black">{badge.title}</span>
-                {badge.earned ? <Check size={18} /> : <span className="h-2 w-2 rounded-full bg-ink/20" />}
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <button
-          type="button"
-          onClick={onReset}
-          className="flex min-h-11 w-full items-center justify-center gap-2 rounded-lg border border-ink/10 bg-white/70 px-3 text-sm font-black text-ink/65 transition hover:bg-coral hover:text-white focus-visible:focus-ring"
-        >
-          <RotateCcw size={18} />
-          Reset Progress
-        </button>
       </div>
 
-      <div className="rounded-lg border border-ink/10 bg-white/82 p-5 shadow-sm">
-        <h2 className="text-lg font-black text-ink">Mastery</h2>
-        <div className="mt-4 space-y-4">
-          {mastery.map((item) => {
-            const percent = item.total ? (item.completed / item.total) * 100 : 0;
-
-            return (
-              <div key={item.concept}>
-                <div className="mb-2 flex items-center justify-between gap-3">
-                  <span
-                    className={`rounded-md border px-2.5 py-1 text-xs font-black ${conceptStyles[item.concept]}`}
-                  >
-                    {item.concept}
-                  </span>
-                  <span className="text-xs font-black text-ink/55">
-                    {item.completed}/{item.total} complete
-                  </span>
-                </div>
-                <div className="h-3 overflow-hidden rounded-full bg-ink/10">
-                  <motion.div
-                    initial={{ width: 0 }}
-                    animate={{ width: `${percent}%` }}
-                    transition={{ duration: 0.45, ease: "easeOut" }}
-                    className="h-full rounded-full bg-lake"
-                  />
-                </div>
-                <p className="mt-1 text-xs font-bold text-ink/50">
-                  {item.attempts} attempt{item.attempts === 1 ? "" : "s"}
-                </p>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    </section>
+      <motion.div
+        animate={{ y: [4, -4, 4], rotate: [0, 1.5, 0] }}
+        transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+        className="absolute -bottom-7 -right-1 w-[120px] sm:-bottom-10 sm:right-6 sm:w-[180px]"
+      >
+        <Image
+          src="/math-buddy.png"
+          alt=""
+          width={560}
+          height={700}
+          className="h-auto w-full object-contain"
+        />
+      </motion.div>
+    </motion.div>
   );
 }

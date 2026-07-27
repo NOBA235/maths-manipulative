@@ -14,6 +14,7 @@ and concept mastery are stored locally in the browser.
 - Eight grade 2-4 hands-on math missions
 - Two-checkpoint setup and result evidence capture
 - Native mobile camera and photo upload support
+- Animated mission trail with an original math guide character
 - Gemini 2.5 Flash image analysis
 - Structured JSON responses with mission-specific schemas
 - Deterministic app-side correctness checks
@@ -189,7 +190,8 @@ scripts/
 tests/
 `-- verifier.test.ts          Prompt and evaluator fixtures
 public/
-`-- manipulatives.svg         Application visual asset
+|-- manipulatives.svg         Manipulative illustration
+`-- math-buddy.png            Animated app guide character
 ```
 
 ## Privacy and Data
