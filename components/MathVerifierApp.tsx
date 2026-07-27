@@ -123,6 +123,11 @@ const evidenceStageSurface: Record<EvidenceStage, string> = {
   result: "border-plum/25 bg-[#f7f3ff]",
 };
 
+const evidenceStageLabels: Record<EvidenceStage, string> = {
+  setup: "First photo",
+  result: "Second photo",
+};
+
 export default function MathVerifierApp() {
   const [screen, setScreen] = useState<Screen>("missions");
   const [selectedMission, setSelectedMission] = useState<Mission | null>(null);
@@ -594,7 +599,7 @@ function MissionList({
                   {mission.title}
                 </h3>
                 <p className="mt-2 line-clamp-2 text-sm leading-5 text-ink/60">
-                  {mission.instruction}
+                  {mission.challenge}
                 </p>
 
                 <div className="mt-auto flex items-center justify-between gap-3 border-t border-ink/10 pt-3">
@@ -739,6 +744,8 @@ function MissionDetail({
 }) {
   const completed = progress.missions[mission.id]?.correct;
   const canVerify = Boolean(evidenceFiles.setup && evidenceFiles.result);
+  const photosReady =
+    Number(Boolean(evidenceFiles.setup)) + Number(Boolean(evidenceFiles.result));
 
   return (
     <section className="mx-auto grid max-w-6xl gap-4 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
@@ -777,9 +784,41 @@ function MissionDetail({
         <h2 className="mt-4 text-2xl font-black leading-tight text-ink sm:text-3xl">
           {mission.title}
         </h2>
-        <p className="mt-3 text-base leading-7 text-ink/70">{mission.instruction}</p>
 
-        <div className="mt-5 divide-y divide-ink/10 border-y border-ink/10">
+        <div className="mt-4 border-y border-saffron/60 bg-[#fff9dd] py-4">
+          <p className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.14em] text-[#8b6200]">
+            <Sparkles size={16} />
+            Your Challenge
+          </p>
+          <p className="mt-1 text-lg font-black leading-7 text-ink">
+            {mission.challenge}
+          </p>
+        </div>
+
+        <div className="mt-5">
+          <h3 className="flex items-center gap-2 text-sm font-black text-ink">
+            <ListChecks className="text-leaf" size={19} />
+            Grab These First
+          </h3>
+          <ul className="mt-3 grid gap-2 sm:grid-cols-2">
+            {mission.materials.map((material) => (
+              <li
+                key={material}
+                className="flex min-h-8 items-center gap-2 text-sm font-bold text-ink/70"
+              >
+                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-leaf text-white">
+                  <Check size={13} strokeWidth={3} />
+                </span>
+                {material}
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <div className="mt-6">
+          <h3 className="text-sm font-black text-ink">Do These 2 Steps</h3>
+        </div>
+        <div className="mt-2 divide-y divide-ink/10 border-y border-ink/10">
           {(["setup", "result"] as EvidenceStage[]).map((stage, index) => (
             <motion.div
               key={stage}
@@ -792,42 +831,74 @@ function MissionDetail({
                 {index + 1}
               </div>
               <div>
-                <h3 className="text-sm font-black text-ink">
+                <p className="text-xs font-black uppercase tracking-[0.12em] text-ink/40">
+                  Step {index + 1} | {evidenceStageLabels[stage]}
+                </p>
+                <h3 className="mt-1 text-sm font-black text-ink">
                   {mission.evidence[stage].title}
                 </h3>
-                <p className="mt-1 text-sm leading-5 text-ink/60">
-                  {mission.evidence[stage].instruction}
+                <p className="mt-1 text-sm font-bold leading-5 text-ink/70">
+                  {mission.evidence[stage].action}
+                </p>
+                <p className="mt-1 flex gap-1.5 text-xs leading-5 text-ink/50">
+                  <Camera className="mt-0.5 shrink-0" size={14} />
+                  <span>{mission.evidence[stage].photoTip}</span>
                 </p>
               </div>
             </motion.div>
           ))}
         </div>
 
-        <label className="mt-6 block text-sm font-black text-ink" htmlFor="prediction">
+        <label className="mt-6 flex items-center justify-between gap-3 text-sm font-black text-ink" htmlFor="prediction">
           {mission.predictionLabel}
+          <span className="shrink-0 text-xs font-bold text-ink/40">Optional guess</span>
         </label>
         <input
           id="prediction"
           value={prediction}
           onChange={(event) => setPrediction(event.target.value)}
           inputMode={mission.promptMode === "measurement" ? "decimal" : "text"}
-          placeholder="Optional"
+          placeholder="Type your guess"
           className="mt-2 h-12 w-full rounded-lg border-2 border-ink/10 bg-paper px-3 text-base font-bold text-ink outline-none transition placeholder:text-ink/30 focus:border-lake focus:bg-white focus:ring-4 focus:ring-lake/20"
         />
+
+        <div className="mt-5">
+          <div className="flex items-center justify-between gap-3 text-xs font-black">
+            <span className="text-ink/60">Photos ready</span>
+            <span className={canVerify ? "text-leaf" : "text-ink/40"}>
+              {photosReady}/2
+            </span>
+          </div>
+          <div className="mt-2 h-2 overflow-hidden rounded-full bg-ink/10">
+            <motion.div
+              animate={{ width: `${photosReady * 50}%` }}
+              className="h-full bg-leaf"
+            />
+          </div>
+        </div>
 
         <button
           type="button"
           onClick={onVerify}
           disabled={!canVerify || checking}
-          className="mt-5 flex min-h-12 w-full items-center justify-center gap-2 rounded-lg bg-ink px-3 text-sm font-black text-white shadow-button transition enabled:hover:-translate-y-0.5 enabled:hover:bg-black enabled:active:translate-y-1 enabled:active:shadow-none disabled:cursor-not-allowed disabled:bg-ink/30"
+          className="mt-4 flex min-h-12 w-full items-center justify-center gap-2 rounded-lg bg-ink px-3 text-sm font-black text-white shadow-button transition enabled:hover:-translate-y-0.5 enabled:hover:bg-black enabled:active:translate-y-1 enabled:active:shadow-none disabled:cursor-not-allowed disabled:bg-ink/30"
         >
           {checking ? (
             <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
           ) : (
             <ScanLine size={19} />
           )}
-          {checking ? "Checking Your Work..." : "Verify Both Steps"}
+          {checking ? "Math Buddy Is Checking..." : "Check My Math"}
         </button>
+        {!canVerify ? (
+          <p className="mt-2 text-center text-xs font-bold text-ink/45">
+            Take both photos to unlock the check button.
+          </p>
+        ) : (
+          <p className="mt-2 text-center text-xs font-bold text-leaf">
+            Both photos are ready. Nice work!
+          </p>
+        )}
       </div>
 
       <div className="space-y-4">
@@ -896,7 +967,7 @@ function EvidenceCapture({
           </div>
           <div className="min-w-0">
             <p className="text-xs font-black uppercase tracking-[0.14em] text-ink/50">
-              {stage}
+              {evidenceStageLabels[stage]}
             </p>
             <h3 className="truncate text-sm font-black text-ink">
               {checkpoint.title}
@@ -935,8 +1006,11 @@ function EvidenceCapture({
             >
               <Camera size={28} />
             </motion.div>
-            <p className="mt-3 text-sm font-bold leading-5">
-              {checkpoint.instruction}
+            <p className="mt-3 text-sm font-black leading-5 text-ink/70">
+              {checkpoint.action}
+            </p>
+            <p className="mt-1 text-xs font-bold leading-5 text-ink/45">
+              Photo tip: {checkpoint.photoTip}
             </p>
           </div>
         )}
@@ -968,7 +1042,9 @@ function EvidenceCapture({
         }`}
       >
         <Camera size={18} />
-        {file ? "Replace Photo" : "Capture Photo"}
+        {file
+          ? `Replace ${evidenceStageLabels[stage]}`
+          : `Take ${evidenceStageLabels[stage]}`}
       </label>
       <input
         id={inputId}

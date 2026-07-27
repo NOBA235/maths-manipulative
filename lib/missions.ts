@@ -71,6 +71,8 @@ export type EvidenceStage = "setup" | "result";
 export type EvidenceCheckpoint = {
   title: string;
   instruction: string;
+  action: string;
+  photoTip: string;
 };
 
 export type EvidencePlan = Record<EvidenceStage, EvidenceCheckpoint>;
@@ -82,6 +84,8 @@ export type Mission = {
   concept: Concept;
   promptMode: PromptMode;
   instruction: string;
+  challenge: string;
+  materials: string[];
   predictionLabel: string;
   targetSpec: TargetSpec;
   evidence: EvidencePlan;
@@ -98,6 +102,8 @@ export const missions: Mission[] = [
     promptMode: "object-count",
     instruction:
       "Build two starting piles, then combine them to show how addition changes two parts into one total.",
+    challenge: "Can you build 7 + 8 and find the total?",
+    materials: ["15 small objects", "A clear table"],
     predictionLabel: "How many objects will be in the combined group?",
     targetSpec: {
       kind: "count",
@@ -108,14 +114,18 @@ export const missions: Mission[] = [
     },
     evidence: {
       setup: {
-        title: "Two starting piles",
+        title: "Build two piles",
         instruction:
           "Make one pile of 7 objects and one pile of 8. Leave clear space between them and photograph both from above.",
+        action: "Make one pile of 7 and another pile of 8.",
+        photoTip: "Leave a gap between the piles and take your photo from above.",
       },
       result: {
-        title: "Combined total",
+        title: "Join the piles",
         instruction:
           "Combine both piles into one group. Keep every object visible and photograph the final group from above.",
+        action: "Push both piles together to make one big group.",
+        photoTip: "Make sure every object can be seen in the photo.",
       },
     },
     xp: 30,
@@ -130,6 +140,8 @@ export const missions: Mission[] = [
     promptMode: "object-count",
     instruction:
       "Show the starting amount, then remove objects to demonstrate what remains after subtraction.",
+    challenge: "Can you start with 15, take away 6, and leave 9?",
+    materials: ["15 small objects", "A clear table"],
     predictionLabel: "How many objects should be left?",
     targetSpec: {
       kind: "count",
@@ -140,14 +152,18 @@ export const missions: Mission[] = [
     },
     evidence: {
       setup: {
-        title: "Starting amount",
+        title: "Build the starting group",
         instruction:
           "Place all 15 objects in one visible group and photograph the complete group from above.",
+        action: "Count out 15 objects in one group.",
+        photoTip: "Show all 15 objects and take your photo from above.",
       },
       result: {
-        title: "Objects remaining",
+        title: "Take 6 away",
         instruction:
           "Remove 6 objects so that 9 remain. Photograph only the remaining objects.",
+        action: "Move 6 objects away so 9 stay on the table.",
+        photoTip: "Keep the removed objects out of the photo.",
       },
     },
     xp: 30,
@@ -162,6 +178,8 @@ export const missions: Mission[] = [
     promptMode: "array",
     instruction:
       "Count out the full set, then organize it into equal rows to demonstrate multiplication.",
+    challenge: "Can you turn 24 objects into 6 neat rows of 4?",
+    materials: ["24 small objects", "A clear table"],
     predictionLabel: "How many objects will the grid have?",
     targetSpec: {
       kind: "array",
@@ -171,14 +189,18 @@ export const missions: Mission[] = [
     },
     evidence: {
       setup: {
-        title: "Count out 24",
+        title: "Build a group of 24",
         instruction:
           "Place 24 objects in one loose, countable group and photograph all of them from above.",
+        action: "Count out 24 objects in one loose group.",
+        photoTip: "Spread them out so every object is easy to see.",
       },
       result: {
-        title: "Six rows of four",
+        title: "Make 6 rows of 4",
         instruction:
           "Arrange the same 24 objects into 6 straight rows of 4, then photograph the full array.",
+        action: "Move the objects into 6 straight rows with 4 in each row.",
+        photoTip: "Take your photo from above so all the rows are visible.",
       },
     },
     xp: 40,
@@ -193,6 +215,8 @@ export const missions: Mission[] = [
     promptMode: "equal-groups",
     instruction:
       "Show the total first, then share it into equal groups to demonstrate division.",
+    challenge: "Can you share 20 objects fairly between 4 groups?",
+    materials: ["20 small objects", "A clear table"],
     predictionLabel: "How many objects should be in each group?",
     targetSpec: {
       kind: "equalGroups",
@@ -202,14 +226,18 @@ export const missions: Mission[] = [
     },
     evidence: {
       setup: {
-        title: "Starting total",
+        title: "Build a group of 20",
         instruction:
           "Place all 20 objects in one countable group and photograph the complete group.",
+        action: "Count out 20 objects in one group.",
+        photoTip: "Spread them out so all 20 can be seen.",
       },
       result: {
-        title: "Four equal groups",
+        title: "Share into 4 groups",
         instruction:
           "Split the same objects into 4 groups of 5. Leave space between groups and photograph all four.",
+        action: "Share the objects into 4 groups with 5 in each group.",
+        photoTip: "Leave a clear gap between every group.",
       },
     },
     xp: 40,
@@ -224,6 +252,8 @@ export const missions: Mission[] = [
     promptMode: "fraction",
     instruction:
       "Show one whole, then divide it into four roughly equal parts to demonstrate fourths.",
+    challenge: "Can you turn one whole into 4 fair parts?",
+    materials: ["1 sheet of paper", "A clear table"],
     predictionLabel: "What fraction is one part of the whole?",
     targetSpec: {
       kind: "fraction",
@@ -232,14 +262,18 @@ export const missions: Mission[] = [
     },
     evidence: {
       setup: {
-        title: "One whole",
+        title: "Show one whole",
         instruction:
           "Place one whole sheet of paper or soft food item flat and photograph it from above.",
+        action: "Place one whole sheet of paper flat on the table.",
+        photoTip: "Fit the whole sheet inside your photo.",
       },
       result: {
-        title: "Four fair parts",
+        title: "Make 4 fair parts",
         instruction:
           "Fold or tear the whole into 4 roughly equal parts and photograph all parts from above. Use adult help with food.",
+        action: "Fold or carefully tear the paper into 4 nearly equal parts.",
+        photoTip: "Lay all 4 parts flat where they can be counted.",
       },
     },
     xp: 45,
@@ -254,6 +288,8 @@ export const missions: Mission[] = [
     promptMode: "angle",
     instruction:
       "Show the paper before folding, then create and reveal a right angle.",
+    challenge: "Can you fold a square corner that makes a right angle?",
+    materials: ["1 sheet of paper", "A clear table"],
     predictionLabel: "About how many degrees is a right angle?",
     targetSpec: {
       kind: "angle",
@@ -263,14 +299,18 @@ export const missions: Mission[] = [
     },
     evidence: {
       setup: {
-        title: "Paper ready to fold",
+        title: "Show the flat paper",
         instruction:
           "Place one flat sheet of paper where its edges and corners are clearly visible, then photograph it.",
+        action: "Place one flat sheet of paper on the table.",
+        photoTip: "Make sure its edges and corners are easy to see.",
       },
       result: {
-        title: "Folded right angle",
+        title: "Fold a square corner",
         instruction:
           "Fold the paper to create a right angle. Photograph the fold with both arms of the angle visible.",
+        action: "Fold the paper so two straight edges make a square corner.",
+        photoTip: "Show both sides of the angle clearly in your photo.",
       },
     },
     xp: 45,
@@ -285,6 +325,8 @@ export const missions: Mission[] = [
     promptMode: "measurement",
     instruction:
       "Estimate first, then align a ruler with the pencil to compare the estimate with a measured length.",
+    challenge: "Can you estimate a pencil, then measure it in centimeters?",
+    materials: ["1 pencil", "1 centimeter ruler"],
     predictionLabel: "Your estimate in centimeters",
     targetSpec: {
       kind: "measurement",
@@ -294,14 +336,18 @@ export const missions: Mission[] = [
     },
     evidence: {
       setup: {
-        title: "Estimate before measuring",
+        title: "Make your estimate",
         instruction:
           "Place the pencil and ruler separately so both are visible. Enter your estimate before taking this photo.",
+        action: "Place the pencil and ruler apart, then guess the pencil's length.",
+        photoTip: "Show the whole pencil and ruler, but do not line them up yet.",
       },
       result: {
-        title: "Ruler measurement",
+        title: "Measure the pencil",
         instruction:
           "Align the ruler's zero mark with one end of the pencil. Photograph both endpoints and readable ruler marks.",
+        action: "Line up the ruler's zero mark with one end of the pencil.",
+        photoTip: "Show both pencil ends and the ruler numbers clearly.",
       },
     },
     xp: 45,
@@ -316,6 +362,8 @@ export const missions: Mission[] = [
     promptMode: "skip-counting",
     instruction:
       "Show the full amount, then organize it into groups that can be skip-counted by five.",
+    challenge: "Can you make 5 groups of 5 and count to 25?",
+    materials: ["25 small objects", "A clear table"],
     predictionLabel: "How many groups of 5 will make 25?",
     targetSpec: {
       kind: "equalGroups",
@@ -325,14 +373,18 @@ export const missions: Mission[] = [
     },
     evidence: {
       setup: {
-        title: "Starting total",
+        title: "Build a group of 25",
         instruction:
           "Place all 25 objects in one loose, countable group and photograph the full set.",
+        action: "Count out 25 objects in one loose group.",
+        photoTip: "Spread them out so every object can be seen.",
       },
       result: {
-        title: "Five groups of five",
+        title: "Make 5 groups of 5",
         instruction:
           "Arrange the same objects into 5 separated groups of 5 and photograph all groups from above.",
+        action: "Move the objects into 5 groups with 5 in each group.",
+        photoTip: "Leave a clear gap between the groups and photograph from above.",
       },
     },
     xp: 35,

@@ -23,8 +23,14 @@ for (const mission of missions) {
   assert.match(prompt, /RESULT PHOTO/);
   assert.ok(schema.required.includes("setup_confident"));
   assert.ok(schema.required.includes("result_confident"));
+  assert.ok(mission.challenge.length > 0);
+  assert.ok(mission.materials.length > 0);
   assert.ok(mission.evidence.setup.instruction.length > 0);
   assert.ok(mission.evidence.result.instruction.length > 0);
+  assert.ok(mission.evidence.setup.action.length > 0);
+  assert.ok(mission.evidence.result.action.length > 0);
+  assert.ok(mission.evidence.setup.photoTip.length > 0);
+  assert.ok(mission.evidence.result.photoTip.length > 0);
 }
 
 const sharedCountingMissions = [
