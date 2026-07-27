@@ -12,7 +12,9 @@ and concept mastery are stored locally in the browser.
 ## Features
 
 - Eight grade 2-4 hands-on math missions
+- Kid-friendly challenge questions, materials lists, and action-first task steps
 - Two-checkpoint setup and result evidence capture
+- Plain-language photo tips and a two-photo readiness meter before checking
 - Native mobile camera and photo upload support
 - Animated mission trail with an original math guide character
 - Gemini 2.5 Flash image analysis
@@ -73,15 +75,32 @@ included in the browser bundle.
 
 ## How It Works
 
-1. The learner selects a mission and reads the physical activity.
-2. They enter a prediction before submitting their work.
-3. They take or upload a setup photo before performing the action.
-4. They complete the physical transformation and capture the result.
-5. The browser sends both images, the mission ID, and prediction to `/api/verify`.
-6. Gemini analyzes the labeled evidence and returns mission-specific JSON.
-7. The app scores setup and result observations independently.
-8. Both checkpoints must match before XP is awarded in `localStorage`.
-9. Ambiguous evidence requests a retake only for the affected checkpoint.
+1. The learner selects a mission and sees one short challenge question.
+2. They gather the listed materials, then follow two numbered action steps.
+3. They take or upload a first photo of the starting setup.
+4. They perform the mathematical transformation and take a second photo of the result.
+5. They can enter an optional prediction before checking their work.
+6. The readiness meter unlocks **Check My Math** once both photos are present.
+7. The browser sends both images, the mission ID, and prediction to `/api/verify`.
+8. Gemini analyzes the labeled evidence and returns mission-specific JSON.
+9. The app scores setup and result observations independently.
+10. Both checkpoints must match before XP is awarded in `localStorage`.
+11. Ambiguous evidence requests a retake only for the affected checkpoint.
+
+## Learner-Friendly Mission Flow
+
+Every mission is presented in the same predictable format so learners can focus
+on the math rather than deciphering instructions:
+
+1. **Your Challenge** states the goal as a short question, such as “Can you
+   build 7 + 8 and find the total?”
+2. **Grab These First** lists the physical items needed for the activity.
+3. **Do These 2 Steps** uses one action for the starting setup and one for the
+   transformed result.
+4. Each capture area repeats the action with a short photo tip, such as leaving
+   gaps between groups or showing every ruler mark clearly.
+5. The app shows `0/2`, `1/2`, or `2/2` photos ready, making the next action
+   obvious before verification begins.
 
 Gemini does not decide correctness through free-form prose. It reports
 observable values such as object count, array dimensions, equal group sizes,
@@ -122,7 +141,8 @@ The fixture suite does not call Gemini or require an API key:
 npm run test:verifier
 ```
 
-It checks all eight missions, shared counting prompts, JSON-only prompt rules,
+It checks all eight missions, their learner-facing challenge, materials,
+actions, and photo tips, plus shared counting prompts, JSON-only prompt rules,
 response schemas, confidence handling, and app-side target comparison.
 
 ### Live Photo Verification
