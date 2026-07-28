@@ -35,6 +35,13 @@ import Image from "next/image";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { EvaluationResult } from "@/lib/evaluate";
 import {
+  emptyLearnerProfile,
+  loadLearnerProfile,
+  normalizeLearnerName,
+  saveLearnerProfile,
+  type LearnerProfile,
+} from "@/lib/learner";
+import {
   missions,
   type Concept,
   type EvidenceStage,
@@ -149,9 +156,14 @@ export default function MathVerifierApp() {
   const [result, setResult] = useState<EvaluationResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [recentXp, setRecentXp] = useState(0);
+  const [learnerProfile, setLearnerProfile] =
+    useState<LearnerProfile>(emptyLearnerProfile);
+  const [profileReady, setProfileReady] = useState(false);
 
   useEffect(() => {
     setProgress(loadProgress());
+    setLearnerProfile(loadLearnerProfile());
+    setProfileReady(true);
   }, []);
 
   useEffect(() => {
@@ -318,6 +330,28 @@ export default function MathVerifierApp() {
     saveProgress(next);
   }
 
+  function finishOnboarding(name: string) {
+    const normalizedName = normalizeLearnerName(name);
+    if (!normalizedName) {
+      return;
+    }
+
+    const nextProfile = {
+      name: normalizedName,
+      onboardingComplete: true,
+    };
+    saveLearnerProfile(nextProfile);
+    setLearnerProfile(nextProfile);
+  }
+
+  if (!profileReady) {
+    return <OnboardingLoading />;
+  }
+
+  if (!learnerProfile.onboardingComplete) {
+    return <ComicOnboarding onComplete={finishOnboarding} />;
+  }
+
   return (
     <main className="relative mx-auto flex min-h-screen w-full max-w-6xl flex-col px-4 pb-28 pt-3 sm:px-6 sm:pb-8 sm:pt-5 lg:px-8">
       <AppHeader
@@ -330,6 +364,7 @@ export default function MathVerifierApp() {
         }}
         completedCount={completedCount}
         totalXp={progress.totalXp}
+        learnerName={learnerProfile.name}
       />
 
       <AnimatePresence mode="wait">
@@ -395,6 +430,7 @@ export default function MathVerifierApp() {
           >
             <MissionList
               progress={progress}
+              learnerName={learnerProfile.name}
               onOpenMission={openMission}
             />
           </motion.div>
@@ -404,16 +440,337 @@ export default function MathVerifierApp() {
   );
 }
 
+function OnboardingLoading() {
+  return (
+    <main className="comic-stage flex min-h-screen items-center justify-center px-5">
+      <div className="text-center">
+        <motion.div
+          animate={{ y: [0, -8, 0], rotate: [0, 2, 0] }}
+          transition={{ duration: 1.8, repeat: Infinity, ease: "easeInOut" }}
+          className="mx-auto w-32"
+        >
+          <Image
+            src="/math-buddy.png"
+            alt="Math Buddy"
+            width={560}
+            height={700}
+            priority
+            className="h-auto w-full object-contain"
+          />
+        </motion.div>
+        <p className="mt-3 text-sm font-black text-ink/60">Getting your math club ready...</p>
+      </div>
+    </main>
+  );
+}
+
+function ComicOnboarding({
+  onComplete,
+}: {
+  onComplete: (name: string) => void;
+}) {
+  const [page, setPage] = useState<1 | 2>(1);
+  const [name, setName] = useState("");
+  const [nameError, setNameError] = useState("");
+
+  function continueToPlan() {
+    const friendlyName = normalizeLearnerName(name);
+
+    if (!friendlyName) {
+      setNameError("Tell me your name so I can cheer for you!");
+      return;
+    }
+
+    setName(friendlyName);
+    setNameError("");
+    setPage(2);
+  }
+
+  return (
+    <main className="comic-stage min-h-screen px-4 py-4 sm:px-6 sm:py-6 lg:px-8">
+      <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-4">
+        <div className="flex items-center gap-2 text-sm font-black text-ink">
+          <span className="flex h-9 w-9 items-center justify-center rounded-md border-2 border-ink bg-saffron shadow-[3px_3px_0_#20233a]">
+            <Sparkles size={19} />
+          </span>
+          Math Buddy&apos;s Club
+        </div>
+        <span className="rounded-md border-2 border-ink bg-white px-3 py-1.5 text-xs font-black text-ink shadow-[3px_3px_0_#20233a]">
+          Page {page} of 2
+        </span>
+      </div>
+
+      <AnimatePresence mode="wait">
+        {page === 1 ? (
+          <motion.div
+            key="meet-math-buddy"
+            initial={{ opacity: 0, x: 24, rotate: 1 }}
+            animate={{ opacity: 1, x: 0, rotate: 0 }}
+            exit={{ opacity: 0, x: -24, rotate: -1 }}
+            transition={{ type: "spring", stiffness: 220, damping: 23 }}
+            className="mx-auto mt-5 grid w-full max-w-6xl gap-5 lg:grid-cols-[1.08fr_0.92fr]"
+          >
+            <section className="comic-panel relative min-h-[360px] overflow-hidden bg-lake p-5 text-white sm:min-h-[500px] sm:p-7">
+              <motion.div
+                animate={{ rotate: [0, 12, 0], y: [0, -6, 0] }}
+                transition={{ duration: 3.4, repeat: Infinity, ease: "easeInOut" }}
+                className="absolute right-7 top-7 text-saffron"
+              >
+                <Star className="fill-saffron" size={35} />
+              </motion.div>
+              <motion.div
+                animate={{ rotate: [0, -10, 0], x: [0, -4, 0] }}
+                transition={{ duration: 3.1, repeat: Infinity, ease: "easeInOut" }}
+                className="absolute left-[42%] top-20 text-white/45"
+              >
+                <Plus size={34} strokeWidth={3} />
+              </motion.div>
+
+              <div className="comic-speech relative z-10 max-w-[72%] bg-white p-4 text-ink sm:max-w-sm sm:p-5">
+                <p className="text-xs font-black uppercase tracking-[0.14em] text-lake">
+                  A brand-new adventure
+                </p>
+                <h1 className="mt-1 text-3xl font-black leading-9 sm:text-4xl sm:leading-[1.1]">
+                  Hi! I&apos;m Math Buddy.
+                </h1>
+                <p className="mt-3 text-sm font-bold leading-6 text-ink/70 sm:text-base">
+                  I love turning everyday things into mighty math discoveries.
+                </p>
+              </div>
+
+              <motion.div
+                animate={{ y: [4, -5, 4], rotate: [0, -1.5, 0] }}
+                transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+                className="absolute -bottom-12 -right-3 w-[255px] sm:-bottom-20 sm:right-3 sm:w-[390px]"
+              >
+                <Image
+                  src="/math-buddy.png"
+                  alt="Math Buddy waves hello"
+                  width={560}
+                  height={700}
+                  priority
+                  className="h-auto w-full object-contain"
+                />
+              </motion.div>
+
+              <p className="absolute bottom-5 left-5 text-xs font-black uppercase tracking-[0.14em] text-white/70 sm:left-7 sm:bottom-7">
+                Issue 01 | Meet your study buddy
+              </p>
+            </section>
+
+            <section className="comic-panel flex min-h-[360px] flex-col bg-[#fff4b8] p-5 sm:p-7">
+              <p className="text-xs font-black uppercase tracking-[0.14em] text-[#8b6200]">
+                Your turn
+              </p>
+              <h2 className="mt-2 text-3xl font-black leading-9 text-ink sm:text-4xl sm:leading-[1.1]">
+                What should I call you?
+              </h2>
+              <p className="mt-3 max-w-md text-base font-bold leading-7 text-ink/65">
+                Type your name and I will save it just on this device. No grown-up
+                forms. No account needed.
+              </p>
+
+              <form
+                className="mt-8"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  continueToPlan();
+                }}
+              >
+                <label className="block text-sm font-black text-ink" htmlFor="learner-name">
+                  My name is...
+                </label>
+                <input
+                  id="learner-name"
+                  value={name}
+                  onChange={(event) => {
+                    setName(event.target.value);
+                    if (nameError) {
+                      setNameError("");
+                    }
+                  }}
+                  autoComplete="given-name"
+                  maxLength={24}
+                  placeholder="Type your awesome name"
+                  className="mt-2 h-14 w-full rounded-md border-2 border-ink bg-white px-4 text-lg font-black text-ink outline-none transition placeholder:text-ink/35 focus:border-lake focus:ring-4 focus:ring-lake/20"
+                />
+                <p aria-live="polite" className="mt-2 min-h-5 text-sm font-bold text-coral">
+                  {nameError}
+                </p>
+                <button
+                  type="submit"
+                  className="mt-4 flex min-h-12 w-full items-center justify-center gap-2 rounded-md border-2 border-ink bg-coral px-4 text-base font-black text-white shadow-[4px_4px_0_#20233a] transition hover:-translate-y-0.5 hover:bg-[#df3f61] active:translate-x-1 active:translate-y-1 active:shadow-none focus-visible:focus-ring"
+                >
+                  Let&apos;s Go!
+                  <ChevronRight size={20} strokeWidth={3} />
+                </button>
+              </form>
+
+              <div className="mt-auto border-t-2 border-ink/15 pt-5">
+                <p className="flex items-center gap-2 text-sm font-black text-ink/60">
+                  <ShieldCheck className="text-leaf" size={19} />
+                  Your name stays in this browser.
+                </p>
+              </div>
+            </section>
+          </motion.div>
+        ) : (
+          <motion.div
+            key="math-buddy-plan"
+            initial={{ opacity: 0, x: 24, rotate: 1 }}
+            animate={{ opacity: 1, x: 0, rotate: 0 }}
+            exit={{ opacity: 0, x: -24, rotate: -1 }}
+            transition={{ type: "spring", stiffness: 220, damping: 23 }}
+            className="mx-auto mt-5 grid w-full max-w-6xl gap-5 lg:grid-cols-[1fr_0.92fr]"
+          >
+            <section className="comic-panel bg-[#eaf8f1] p-5 sm:p-7">
+              <p className="text-xs font-black uppercase tracking-[0.14em] text-leaf">
+                Mission briefing
+              </p>
+              <h1 className="mt-2 text-3xl font-black leading-9 text-ink sm:text-4xl sm:leading-[1.1]">
+                Ready, {name}?
+              </h1>
+              <p className="mt-3 max-w-xl text-base font-bold leading-7 text-ink/65">
+                We will use real things, make a little math magic, and show what
+                happened step by step.
+              </p>
+
+              <div className="mt-6 divide-y-2 divide-ink/10 border-y-2 border-ink/10">
+                <ComicPlanStep
+                  number="1"
+                  icon={ListChecks}
+                  title="Build it"
+                  text="Use buttons, blocks, coins, paper, or other things you can touch."
+                  color="bg-lake text-white"
+                />
+                <ComicPlanStep
+                  number="2"
+                  icon={Camera}
+                  title="Show it"
+                  text="Take one photo before you change your math and one after."
+                  color="bg-plum text-white"
+                />
+                <ComicPlanStep
+                  number="3"
+                  icon={ScanLine}
+                  title="Check it"
+                  text="I will help check your steps, then celebrate your clever thinking."
+                  color="bg-coral text-white"
+                />
+              </div>
+
+              <div className="mt-6 flex flex-wrap items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => onComplete(name)}
+                  className="flex min-h-12 items-center gap-2 rounded-md border-2 border-ink bg-ink px-5 text-base font-black text-white shadow-[4px_4px_0_#249b68] transition hover:-translate-y-0.5 hover:bg-black active:translate-x-1 active:translate-y-1 active:shadow-none focus-visible:focus-ring"
+                >
+                  Start Exploring
+                  <ChevronRight size={20} strokeWidth={3} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPage(1)}
+                  className="flex min-h-11 items-center gap-2 rounded-md px-3 text-sm font-black text-ink/60 transition hover:bg-white/70 hover:text-ink focus-visible:focus-ring"
+                >
+                  <ArrowLeft size={18} />
+                  Change my name
+                </button>
+              </div>
+            </section>
+
+            <section className="comic-panel relative min-h-[390px] overflow-hidden bg-coral p-5 text-white sm:min-h-[510px] sm:p-7">
+              <motion.div
+                animate={{ rotate: [0, 10, 0], scale: [1, 1.08, 1] }}
+                transition={{ duration: 3.8, repeat: Infinity }}
+                className="absolute right-7 top-8 text-saffron"
+              >
+                <Sparkles size={38} />
+              </motion.div>
+              <motion.div
+                animate={{ rotate: [0, -11, 0], y: [0, -4, 0] }}
+                transition={{ duration: 3.2, repeat: Infinity, ease: "easeInOut" }}
+                className="absolute left-7 top-[42%] text-white/50"
+              >
+                <Asterisk size={35} strokeWidth={3} />
+              </motion.div>
+
+              <div className="comic-speech relative z-10 max-w-[75%] bg-white p-4 text-ink sm:max-w-sm sm:p-5">
+                <p className="text-xs font-black uppercase tracking-[0.14em] text-coral">
+                  Math Buddy says
+                </p>
+                <p className="mt-2 text-xl font-black leading-7 sm:text-2xl sm:leading-8">
+                  &quot;You do the building. I will be right here to cheer you on!&quot;
+                </p>
+              </div>
+
+              <motion.div
+                animate={{ y: [4, -5, 4], rotate: [0, 1.5, 0] }}
+                transition={{ duration: 3.1, repeat: Infinity, ease: "easeInOut" }}
+                className="absolute -bottom-14 -right-4 w-[265px] sm:-bottom-20 sm:right-2 sm:w-[420px]"
+              >
+                <Image
+                  src="/math-buddy.png"
+                  alt="Math Buddy is ready to explore"
+                  width={560}
+                  height={700}
+                  priority
+                  className="h-auto w-full object-contain"
+                />
+              </motion.div>
+
+              <p className="absolute bottom-5 left-5 text-xs font-black uppercase tracking-[0.14em] text-white/75 sm:left-7 sm:bottom-7">
+                Issue 02 | The math club plan
+              </p>
+            </section>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </main>
+  );
+}
+
+function ComicPlanStep({
+  number,
+  icon: Icon,
+  title,
+  text,
+  color,
+}: {
+  number: string;
+  icon: LucideIcon;
+  title: string;
+  text: string;
+  color: string;
+}) {
+  return (
+    <div className="flex gap-4 py-4 sm:py-5">
+      <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-md border-2 border-ink text-sm font-black shadow-[2px_2px_0_#20233a] ${color}`}>
+        {number}
+      </div>
+      <div>
+        <h2 className="flex items-center gap-2 text-base font-black text-ink">
+          <Icon size={18} />
+          {title}
+        </h2>
+        <p className="mt-1 text-sm font-bold leading-6 text-ink/65">{text}</p>
+      </div>
+    </div>
+  );
+}
+
 function AppHeader({
   screen,
   setScreen,
   completedCount,
   totalXp,
+  learnerName,
 }: {
   screen: Screen;
   setScreen: (screen: Screen) => void;
   completedCount: number;
   totalXp: number;
+  learnerName: string;
 }) {
   return (
     <header className="mb-6">
@@ -438,11 +795,11 @@ function AppHeader({
               Math Explorer
             </p>
             <h1 className="truncate text-xl font-black text-ink sm:text-2xl">
-              <span className="sm:hidden">Math Verifier</span>
-              <span className="hidden sm:inline">
-                Math Manipulative Verifier
-              </span>
+              Hi, {learnerName}!
             </h1>
+            <p className="hidden text-xs font-bold text-ink/45 sm:block">
+              Math Manipulative Verifier
+            </p>
           </div>
         </div>
         <motion.div
@@ -533,9 +890,11 @@ function HeaderNavButton({
 
 function MissionList({
   progress,
+  learnerName,
   onOpenMission,
 }: {
   progress: ProgressState;
+  learnerName: string;
   onOpenMission: (mission: Mission) => void;
 }) {
   const completed = Object.values(progress.missions).filter(
@@ -550,6 +909,7 @@ function MissionList({
       <ExplorerBanner
         completed={completed}
         progress={progress}
+        learnerName={learnerName}
         nextMission={nextMission}
         onStart={() => onOpenMission(nextMission)}
       />
@@ -660,11 +1020,13 @@ function MissionList({
 function ExplorerBanner({
   completed,
   progress,
+  learnerName,
   nextMission,
   onStart,
 }: {
   completed: number;
   progress: ProgressState;
+  learnerName: string;
   nextMission: Mission;
   onStart: () => void;
 }) {
@@ -693,7 +1055,7 @@ function ExplorerBanner({
 
       <div className="relative z-10 max-w-[58%] sm:max-w-[64%]">
         <p className="text-xs font-black uppercase tracking-[0.14em] text-[#8b6200]">
-          {completed === missions.length ? "Trail Complete" : "Up Next"}
+          {completed === missions.length ? "Trail Complete" : `Up Next, ${learnerName}`}
         </p>
         <h2 className="mt-1 text-xl font-black leading-7 text-ink sm:text-3xl sm:leading-9">
           {completed === missions.length

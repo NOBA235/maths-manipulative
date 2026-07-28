@@ -12,6 +12,7 @@ and concept mastery are stored locally in the browser.
 ## Features
 
 - Eight grade 2-4 hands-on math missions
+- Two-page Math Buddy comic welcome with a browser-local learner display name
 - Kid-friendly challenge questions, materials lists, and action-first task steps
 - Two-checkpoint setup and result evidence capture
 - Plain-language photo tips and a two-photo readiness meter before checking
@@ -77,17 +78,19 @@ included in the browser bundle.
 
 ## How It Works
 
-1. The learner selects a mission and sees one short challenge question.
-2. They gather the listed materials, then follow two numbered action steps.
-3. They take or upload a first photo of the starting setup.
-4. They perform the mathematical transformation and take a second photo of the result.
-5. They can enter an optional prediction before checking their work.
-6. The readiness meter unlocks **Check My Math** once both photos are present.
-7. The browser sends both images, the mission ID, and prediction to `/api/verify`.
-8. Gemini analyzes the labeled evidence and returns mission-specific JSON.
-9. The app scores setup and result observations independently.
-10. Both checkpoints must match before XP is awarded in `localStorage`.
-11. Ambiguous evidence requests a retake only for the affected checkpoint.
+1. On a new device, Math Buddy welcomes the learner through a two-page comic story.
+2. The learner enters a display name, saved only in the current browser.
+3. They select a mission and see one short challenge question.
+4. They gather the listed materials, then follow two numbered action steps.
+5. They take or upload a first photo of the starting setup.
+6. They perform the mathematical transformation and take a second photo of the result.
+7. They can enter an optional prediction before checking their work.
+8. The readiness meter unlocks **Check My Math** once both photos are present.
+9. The browser sends both images, the mission ID, and prediction to `/api/verify`.
+10. Gemini analyzes the labeled evidence and returns mission-specific JSON.
+11. The app scores setup and result observations independently.
+12. Both checkpoints must match before XP is awarded in `localStorage`.
+13. Ambiguous evidence requests a retake only for the affected checkpoint.
 
 ## Learner-Friendly Mission Flow
 
@@ -225,6 +228,7 @@ components/
 lib/
 |-- evaluate.ts               Structured result comparison
 |-- geminiVision.ts           Gemini image request and JSON parsing
+|-- learner.ts                Browser-local learner profile and onboarding state
 |-- missions.ts               Mission definitions and target specifications
 |-- progress.ts               localStorage progress and rewards
 `-- prompts.ts                Vision prompts and response schemas
@@ -241,10 +245,11 @@ public/
 
 - The app has no database, user accounts, or server-side progress history.
 - Learning progress is stored in the current browser using `localStorage`.
+- The optional learner display name and completed welcome state are also stored only in the current browser.
 - Submitted setup and result photos pass through the Next.js API route and are sent to the
   configured Gemini API for analysis.
 - The application does not intentionally persist uploaded photos.
-- Clearing browser storage resets local progress.
+- Clearing browser storage resets local progress and the Math Buddy welcome.
 
 Review Google's Gemini API data-use terms before using the app with learners or
 deploying it in a school environment.

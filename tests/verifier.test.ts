@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { evaluateMission } from "../lib/evaluate";
+import { normalizeLearnerName } from "../lib/learner";
 import { missions } from "../lib/missions";
 import { buildCountingPrompt, buildPrompt, schemaForMission } from "../lib/prompts";
 import { emptyProgress, getParentSnapshot } from "../lib/progress";
@@ -14,6 +15,8 @@ const confidentEvidence = {
 };
 
 assert.equal(missions.length, 8);
+assert.equal(normalizeLearnerName("  Maya   Patel  "), "Maya Patel");
+assert.equal(normalizeLearnerName("   "), "");
 
 const emptyParentSnapshot = getParentSnapshot(emptyProgress);
 assert.equal(emptyParentSnapshot.verifiedMissions.length, 0);

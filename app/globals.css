@@ -52,6 +52,41 @@ button {
   outline-offset: 3px;
 }
 
+.comic-stage {
+  background: #fcfbf7;
+}
+
+.comic-panel {
+  border: 3px solid #20233a;
+  border-radius: 8px;
+  box-shadow: 7px 7px 0 #20233a;
+}
+
+.comic-speech {
+  position: relative;
+  border: 2px solid #20233a;
+  border-radius: 8px;
+  box-shadow: 4px 4px 0 rgba(32, 35, 58, 0.24);
+}
+
+.comic-speech::after {
+  position: absolute;
+  bottom: -10px;
+  left: 28px;
+  width: 18px;
+  height: 18px;
+  border-right: 2px solid #20233a;
+  border-bottom: 2px solid #20233a;
+  background: #ffffff;
+  content: "";
+  transform: rotate(45deg);
+}
+
+.comic-speech > * {
+  position: relative;
+  z-index: 1;
+}
+
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
