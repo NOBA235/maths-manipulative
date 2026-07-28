@@ -77,6 +77,17 @@ export type EvidenceCheckpoint = {
 
 export type EvidencePlan = Record<EvidenceStage, EvidenceCheckpoint>;
 
+export type ActivityMode = "draw" | "pencil-case" | "paper" | "measure";
+
+export type MissionActivity = {
+  id: ActivityMode;
+  label: string;
+  description: string;
+  materials: string[];
+  evidence: EvidencePlan;
+  visionHint: string;
+};
+
 export type Mission = {
   id: string;
   title: string;
@@ -85,6 +96,11 @@ export type Mission = {
   promptMode: PromptMode;
   instruction: string;
   challenge: string;
+  activityMode: ActivityMode;
+  activityLabel: string;
+  activityDescription: string;
+  visionHint: string;
+  activityOptions?: MissionActivity[];
   materials: string[];
   durationMinutes: number;
   predictionLabel: string;
@@ -97,167 +113,296 @@ export type Mission = {
 export const missions: Mission[] = [
   {
     id: "add-7-8",
-    title: "Combine Two Piles",
+    title: "Sticker Sheet Surprise",
     grade: "G2",
     concept: "Addition",
     promptMode: "object-count",
     instruction:
-      "Build two starting piles, then combine them to show how addition changes two parts into one total.",
-    challenge: "Can you build 7 + 8 and find the total?",
-    materials: ["15 small objects", "A clear table"],
+      "Make two little collections, then join them into one surprise sticker sheet.",
+    challenge: "Can you make 6 stars and 4 more stars to fill a sheet of 10?",
+    activityMode: "draw",
+    activityLabel: "Draw it",
+    activityDescription: "Make big stars or dots in your notebook.",
+    visionHint:
+      "Treat each large, separate drawn star or dot as one counter. Ignore page lines and unrelated writing.",
+    materials: ["Notebook or loose paper", "Pencil, pen, or marker"],
     durationMinutes: 3,
-    predictionLabel: "How many objects will be in the combined group?",
+    predictionLabel: "How many stars will fill the sheet?",
     targetSpec: {
       kind: "count",
       operation: "addition",
-      operands: [7, 8],
-      targetCount: 15,
-      equation: "7 + 8 = 15",
+      operands: [6, 4],
+      targetCount: 10,
+      equation: "6 + 4 = 10",
     },
     evidence: {
       setup: {
-        title: "Build two piles",
+        title: "Draw 6 and 4 stars",
         instruction:
-          "Make one pile of 7 objects and one pile of 8. Leave clear space between them and photograph both from above.",
-        action: "Make one pile of 7 and another pile of 8.",
-        photoTip: "Leave a gap between the piles and take your photo from above.",
+          "Draw 6 large stars on the left and 4 large stars on the right. Leave a clear gap and photograph the page from above.",
+        action: "Draw 6 stars, then draw 4 more with a gap between them.",
+        photoTip: "Make every star big and separate so they are easy to count.",
       },
       result: {
-        title: "Join the piles",
+        title: "Fill one sticker sheet",
         instruction:
-          "Combine both piles into one group. Keep every object visible and photograph the final group from above.",
-        action: "Push both piles together to make one big group.",
-        photoTip: "Make sure every object can be seen in the photo.",
+          "On a fresh space, draw one group of 10 large stars and photograph it from above.",
+        action: "Draw one happy group of 10 stars.",
+        photoTip: "Keep space between stars so none of them touch.",
       },
     },
+    activityOptions: [
+      {
+        id: "pencil-case",
+        label: "Use my pouch",
+        description: "Make teams with little desk treasures.",
+        materials: ["10 paper clips, mini erasers, coins, or caps", "A clear desk or notebook"],
+        visionHint:
+          "Count each individual, clearly separated desk item as one counter. Ignore hands, containers, and background patterns.",
+        evidence: {
+          setup: {
+            title: "Make 6 and 4 teams",
+            instruction:
+              "Place 6 desk treasures on the left and 4 on the right. Leave a gap and photograph both teams from above.",
+            action: "Make a team of 6 and a team of 4.",
+            photoTip: "Leave a clear gap between the two teams.",
+          },
+          result: {
+            title: "Pack 10 together",
+            instruction:
+              "Move the same treasures into one group of 10 and photograph the group from above.",
+            action: "Pack all 10 desk treasures into one group.",
+            photoTip: "Keep every treasure visible in the photo.",
+          },
+        },
+      },
+    ],
     xp: 30,
     explainer:
-      "Addition joins two amounts into one total, so the final group should show all 15 objects together.",
+      "Addition joins two amounts into one total. Six stars and four stars make a full sheet of ten.",
   },
   {
     id: "sub-15-to-9",
-    title: "Leave 9 Behind",
+    title: "Eraser Rescue",
     grade: "G2",
     concept: "Subtraction",
     promptMode: "object-count",
     instruction:
-      "Show the starting amount, then remove objects to demonstrate what remains after subtraction.",
-    challenge: "Can you start with 15, take away 6, and leave 9?",
-    materials: ["15 small objects", "A clear table"],
+      "Start with a page full of doodles, then make a rescue page that shows what stayed.",
+    challenge: "Can you start with 10 doodles, take away 3, and rescue 7?",
+    activityMode: "draw",
+    activityLabel: "Draw it",
+    activityDescription: "Use little dots, stars, or smiley faces on paper.",
+    visionHint:
+      "Treat each large, separate drawn doodle as one counter. Ignore page lines and unrelated writing.",
+    materials: ["Notebook or loose paper", "Pencil, pen, or marker"],
     durationMinutes: 3,
-    predictionLabel: "How many objects should be left?",
+    predictionLabel: "How many doodles will be rescued?",
     targetSpec: {
       kind: "count",
       operation: "subtraction",
-      operands: [15, 6],
-      targetCount: 9,
-      equation: "15 - 6 = 9",
+      operands: [10, 3],
+      targetCount: 7,
+      equation: "10 - 3 = 7",
     },
     evidence: {
       setup: {
-        title: "Build the starting group",
+        title: "Draw 10 doodles",
         instruction:
-          "Place all 15 objects in one visible group and photograph the complete group from above.",
-        action: "Count out 15 objects in one group.",
-        photoTip: "Show all 15 objects and take your photo from above.",
+          "Draw 10 large, separate doodles in one group and photograph the page from above.",
+        action: "Make one group of 10 dots, stars, or smiley faces.",
+        photoTip: "Keep every doodle large and easy to count.",
       },
       result: {
-        title: "Take 6 away",
+        title: "Rescue 7 doodles",
         instruction:
-          "Remove 6 objects so that 9 remain. Photograph only the remaining objects.",
-        action: "Move 6 objects away so 9 stay on the table.",
-        photoTip: "Keep the removed objects out of the photo.",
+          "On a fresh space, draw only the 7 doodles that were rescued and photograph them from above.",
+        action: "Make a new group with only 7 doodles.",
+        photoTip: "Do not include crossed-out or extra doodles in this photo.",
       },
     },
+    activityOptions: [
+      {
+        id: "pencil-case",
+        label: "Use my pouch",
+        description: "Rescue tiny desk treasures from a group.",
+        materials: ["10 paper clips, mini erasers, coins, or caps", "A clear desk or notebook"],
+        visionHint:
+          "Count each individual, clearly separated desk item as one counter. Ignore hands, containers, and background patterns.",
+        evidence: {
+          setup: {
+            title: "Gather 10 treasures",
+            instruction:
+              "Place 10 desk treasures in one group and photograph them from above.",
+            action: "Gather 10 tiny desk treasures.",
+            photoTip: "Spread them out so all 10 are visible.",
+          },
+          result: {
+            title: "Rescue 7 treasures",
+            instruction:
+              "Move 3 treasures away, leaving only 7 in the photo.",
+            action: "Take 3 away and leave 7 behind.",
+            photoTip: "Keep the 3 moved treasures out of the photo.",
+          },
+        },
+      },
+    ],
     xp: 30,
     explainer:
-      "Subtraction tells what remains after part of a group is taken away. The photo should show the remaining 9.",
+      "Subtraction tells what remains after part of a group is taken away. Ten doodles take away three leaves seven.",
   },
   {
     id: "multi-6-by-4",
-    title: "Rows of Four",
+    title: "Dot Grid Builder",
     grade: "G3",
     concept: "Multiplication",
     promptMode: "array",
     instruction:
-      "Count out the full set, then organize it into equal rows to demonstrate multiplication.",
-    challenge: "Can you turn 24 objects into 6 neat rows of 4?",
-    materials: ["24 small objects", "A clear table"],
+      "Make a dot picture, then organize it into neat equal rows like a mini pixel picture.",
+    challenge: "Can you turn 12 dots into 3 neat rows of 4?",
+    activityMode: "draw",
+    activityLabel: "Draw it",
+    activityDescription: "Build a tiny dot picture in your notebook.",
+    visionHint:
+      "Treat each large, separate drawn dot as one counter. In the result, count straight rows and dots in each row.",
+    materials: ["Notebook or loose paper", "Pencil, pen, or marker"],
     durationMinutes: 4,
-    predictionLabel: "How many objects will the grid have?",
+    predictionLabel: "How many dots will your grid have?",
     targetSpec: {
       kind: "array",
-      rows: 6,
+      rows: 3,
       cols: 4,
-      product: 24,
+      product: 12,
     },
     evidence: {
       setup: {
-        title: "Build a group of 24",
+        title: "Draw 12 dots",
         instruction:
-          "Place 24 objects in one loose, countable group and photograph all of them from above.",
-        action: "Count out 24 objects in one loose group.",
-        photoTip: "Spread them out so every object is easy to see.",
+          "Draw 12 large, separate dots in a loose group and photograph the page from above.",
+        action: "Make one loose group of 12 dots.",
+        photoTip: "Leave lots of space so every dot is easy to see.",
       },
       result: {
-        title: "Make 6 rows of 4",
+        title: "Make 3 rows of 4",
         instruction:
-          "Arrange the same 24 objects into 6 straight rows of 4, then photograph the full array.",
-        action: "Move the objects into 6 straight rows with 4 in each row.",
-        photoTip: "Take your photo from above so all the rows are visible.",
+          "On a fresh space, draw 3 straight rows with 4 dots in each row and photograph the full grid.",
+        action: "Make 3 rows with 4 dots in every row.",
+        photoTip: "Line up the dots so the rows are easy to spot.",
       },
     },
+    activityOptions: [
+      {
+        id: "pencil-case",
+        label: "Use my pouch",
+        description: "Build a tiny grid with desk treasures.",
+        materials: ["12 paper clips, mini erasers, coins, or caps", "A clear desk or notebook"],
+        visionHint:
+          "Count each individual, clearly separated desk item as one counter. In the result, count straight rows and items in each row.",
+        evidence: {
+          setup: {
+            title: "Gather 12 treasures",
+            instruction:
+              "Place 12 desk treasures in a loose group and photograph them from above.",
+            action: "Gather 12 tiny desk treasures.",
+            photoTip: "Spread them out so every treasure is visible.",
+          },
+          result: {
+            title: "Build 3 rows of 4",
+            instruction:
+              "Arrange the same treasures into 3 straight rows with 4 in each row, then photograph the grid.",
+            action: "Make 3 straight rows with 4 treasures in each row.",
+            photoTip: "Keep rows straight and leave small gaps between treasures.",
+          },
+        },
+      },
+    ],
     xp: 40,
     explainer:
-      "A multiplication array uses equal rows. Six rows with four objects in each row makes 24 objects.",
+      "A multiplication array uses equal rows. Three rows with four dots in each row makes twelve dots.",
   },
   {
     id: "divide-20-by-4",
-    title: "Four Equal Piles",
+    title: "Fair-Share Lunchbox",
     grade: "G3",
     concept: "Division",
     promptMode: "equal-groups",
     instruction:
-      "Show the total first, then share it into equal groups to demonstrate division.",
-    challenge: "Can you share 20 objects fairly between 4 groups?",
-    materials: ["20 small objects", "A clear table"],
+      "Fill a pretend lunchbox, then share the snacks fairly so every friend gets the same amount.",
+    challenge: "Can you share 12 snack dots fairly between 3 friends?",
+    activityMode: "draw",
+    activityLabel: "Draw it",
+    activityDescription: "Draw snack dots and share them into friend groups.",
+    visionHint:
+      "Treat each large, separate drawn snack dot as one counter. In the result, count separated groups, dots per group, and the total.",
+    materials: ["Notebook or loose paper", "Pencil, pen, or marker"],
     durationMinutes: 4,
-    predictionLabel: "How many objects should be in each group?",
+    predictionLabel: "How many snack dots does each friend get?",
     targetSpec: {
       kind: "equalGroups",
-      groups: 4,
-      perGroup: 5,
-      total: 20,
+      groups: 3,
+      perGroup: 4,
+      total: 12,
     },
     evidence: {
       setup: {
-        title: "Build a group of 20",
+        title: "Draw 12 snack dots",
         instruction:
-          "Place all 20 objects in one countable group and photograph the complete group.",
-        action: "Count out 20 objects in one group.",
-        photoTip: "Spread them out so all 20 can be seen.",
+          "Draw 12 large, separate snack dots in one group and photograph the page from above.",
+        action: "Make one lunchbox group with 12 snack dots.",
+        photoTip: "Leave a little space around every dot.",
       },
       result: {
-        title: "Share into 4 groups",
+        title: "Share with 3 friends",
         instruction:
-          "Split the same objects into 4 groups of 5. Leave space between groups and photograph all four.",
-        action: "Share the objects into 4 groups with 5 in each group.",
-        photoTip: "Leave a clear gap between every group.",
+          "On a fresh space, draw 3 separated friend groups with 4 snack dots in each group.",
+        action: "Make 3 fair groups with 4 snack dots each.",
+        photoTip: "Leave a clear gap between the friend groups.",
       },
     },
+    activityOptions: [
+      {
+        id: "pencil-case",
+        label: "Use my pouch",
+        description: "Share desk treasures fairly between friends.",
+        materials: ["12 paper clips, mini erasers, coins, or caps", "A clear desk or notebook"],
+        visionHint:
+          "Count each individual, clearly separated desk item as one counter. In the result, count separated groups, items per group, and the total.",
+        evidence: {
+          setup: {
+            title: "Gather 12 treasures",
+            instruction:
+              "Place 12 desk treasures in one group and photograph them from above.",
+            action: "Gather 12 tiny desk treasures.",
+            photoTip: "Spread them out so every treasure is visible.",
+          },
+          result: {
+            title: "Share with 3 friends",
+            instruction:
+              "Split the treasures into 3 separated groups of 4 and photograph all the groups.",
+            action: "Make 3 fair groups with 4 treasures each.",
+            photoTip: "Leave a clear gap between each group.",
+          },
+        },
+      },
+    ],
     xp: 40,
     explainer:
-      "Division shares a total into equal groups. Twenty objects split into four equal groups gives five per group.",
+      "Division shares a total into fair groups. Twelve snack dots split among three friends gives four each.",
   },
   {
     id: "fraction-fourths",
-    title: "Four Fair Parts",
+    title: "Secret Note Folds",
     grade: "G3",
     concept: "Fractions",
     promptMode: "fraction",
     instruction:
-      "Show one whole, then divide it into four roughly equal parts to demonstrate fourths.",
-    challenge: "Can you turn one whole into 4 fair parts?",
+      "Turn one secret note into four fair parts that are ready to share.",
+    challenge: "Can you fold one secret note into 4 fair parts?",
+    activityMode: "paper",
+    activityLabel: "Paper mission",
+    activityDescription: "One sheet of paper is all you need.",
+    visionHint:
+      "The setup should show one undivided sheet. The result should show four roughly equal paper parts or folds clearly from above.",
     materials: ["1 sheet of paper", "A clear table"],
     durationMinutes: 5,
     predictionLabel: "What fraction is one part of the whole?",
@@ -268,18 +413,18 @@ export const missions: Mission[] = [
     },
     evidence: {
       setup: {
-        title: "Show one whole",
+        title: "Show your secret note",
         instruction:
-          "Place one whole sheet of paper or soft food item flat and photograph it from above.",
-        action: "Place one whole sheet of paper flat on the table.",
+          "Place one whole sheet of paper flat on the table and photograph it from above.",
+        action: "Lay one whole secret note flat on the table.",
         photoTip: "Fit the whole sheet inside your photo.",
       },
       result: {
-        title: "Make 4 fair parts",
+        title: "Fold 4 fair parts",
         instruction:
-          "Fold or tear the whole into 4 roughly equal parts and photograph all parts from above. Use adult help with food.",
-        action: "Fold or carefully tear the paper into 4 nearly equal parts.",
-        photoTip: "Lay all 4 parts flat where they can be counted.",
+          "Fold the paper to show 4 roughly equal parts, then photograph the whole paper from above.",
+        action: "Fold your note so it shows 4 nearly equal parts.",
+        photoTip: "Open the paper enough for all 4 parts to be easy to see.",
       },
     },
     xp: 45,
@@ -288,13 +433,18 @@ export const missions: Mission[] = [
   },
   {
     id: "geometry-right-angle",
-    title: "Paper Right Angle",
+    title: "Corner Detective",
     grade: "G4",
     concept: "Geometry",
     promptMode: "angle",
     instruction:
-      "Show the paper before folding, then create and reveal a right angle.",
-    challenge: "Can you fold a square corner that makes a right angle?",
+      "Use paper to discover a perfect square corner, just like the corner of a book or notebook.",
+    challenge: "Can you make a square corner that is a right angle?",
+    activityMode: "paper",
+    activityLabel: "Paper mission",
+    activityDescription: "Use one sheet of paper like a corner detective.",
+    visionHint:
+      "The setup should show one flat sheet of paper. The result should show a clear folded corner with both straight angle arms visible.",
     materials: ["1 sheet of paper", "A clear table"],
     durationMinutes: 4,
     predictionLabel: "About how many degrees is a right angle?",
@@ -306,14 +456,14 @@ export const missions: Mission[] = [
     },
     evidence: {
       setup: {
-        title: "Show the flat paper",
+        title: "Find a flat sheet",
         instruction:
           "Place one flat sheet of paper where its edges and corners are clearly visible, then photograph it.",
         action: "Place one flat sheet of paper on the table.",
         photoTip: "Make sure its edges and corners are easy to see.",
       },
       result: {
-        title: "Fold a square corner",
+        title: "Make a square corner",
         instruction:
           "Fold the paper to create a right angle. Photograph the fold with both arms of the angle visible.",
         action: "Fold the paper so two straight edges make a square corner.",
@@ -326,13 +476,18 @@ export const missions: Mission[] = [
   },
   {
     id: "measure-pencil",
-    title: "Measure a Pencil",
+    title: "Pencil Power Check",
     grade: "G4",
     concept: "Measurement",
     promptMode: "measurement",
     instruction:
-      "Estimate first, then align a ruler with the pencil to compare the estimate with a measured length.",
-    challenge: "Can you estimate a pencil, then measure it in centimeters?",
+      "Make a smart guess, then use your ruler powers to measure a favorite pencil.",
+    challenge: "Can you guess your pencil's length, then measure it in centimeters?",
+    activityMode: "measure",
+    activityLabel: "Pencil mission",
+    activityDescription: "Grab one pencil and a centimeter ruler.",
+    visionHint:
+      "The setup should show a pencil and ruler separately. The result must show the ruler zero aligned with one pencil end and readable centimeter marks.",
     materials: ["1 pencil", "1 centimeter ruler"],
     durationMinutes: 4,
     predictionLabel: "Your estimate in centimeters",
@@ -344,10 +499,10 @@ export const missions: Mission[] = [
     },
     evidence: {
       setup: {
-        title: "Make your estimate",
+        title: "Make a pencil guess",
         instruction:
           "Place the pencil and ruler separately so both are visible. Enter your estimate before taking this photo.",
-        action: "Place the pencil and ruler apart, then guess the pencil's length.",
+        action: "Place your favorite pencil and ruler apart, then make a smart guess.",
         photoTip: "Show the whole pencil and ruler, but do not line them up yet.",
       },
       result: {
@@ -364,41 +519,72 @@ export const missions: Mission[] = [
   },
   {
     id: "skip-5-to-25",
-    title: "Five, Ten, Fifteen",
+    title: "High-Five Dots",
     grade: "G2",
     concept: "Multiplication",
     promptMode: "skip-counting",
     instruction:
-      "Show the full amount, then organize it into groups that can be skip-counted by five.",
-    challenge: "Can you make 5 groups of 5 and count to 25?",
-    materials: ["25 small objects", "A clear table"],
+      "Make little high-five groups and count them like a skip-counting superhero.",
+    challenge: "Can you make 3 high-five groups and count all the way to 15?",
+    activityMode: "draw",
+    activityLabel: "Draw it",
+    activityDescription: "Draw high-five dots in your notebook.",
+    visionHint:
+      "Treat each large, separate drawn dot as one counter. In the result, count separated groups, dots per group, and the total.",
+    materials: ["Notebook or loose paper", "Pencil, pen, or marker"],
     durationMinutes: 4,
-    predictionLabel: "How many groups of 5 will make 25?",
+    predictionLabel: "How many groups of 5 make 15?",
     targetSpec: {
       kind: "equalGroups",
-      groups: 5,
+      groups: 3,
       perGroup: 5,
-      total: 25,
+      total: 15,
     },
     evidence: {
       setup: {
-        title: "Build a group of 25",
+        title: "Draw 15 dots",
         instruction:
-          "Place all 25 objects in one loose, countable group and photograph the full set.",
-        action: "Count out 25 objects in one loose group.",
-        photoTip: "Spread them out so every object can be seen.",
+          "Draw 15 large, separate dots in one loose group and photograph the page from above.",
+        action: "Make one loose group of 15 dots.",
+        photoTip: "Leave space around every dot so they are easy to count.",
       },
       result: {
-        title: "Make 5 groups of 5",
+        title: "Make 3 high-five groups",
         instruction:
-          "Arrange the same objects into 5 separated groups of 5 and photograph all groups from above.",
-        action: "Move the objects into 5 groups with 5 in each group.",
-        photoTip: "Leave a clear gap between the groups and photograph from above.",
+          "On a fresh space, draw 3 separated groups with 5 dots in each group and photograph all groups from above.",
+        action: "Make 3 groups with 5 dots in every group.",
+        photoTip: "Leave a clear gap between the high-five groups.",
       },
     },
+    activityOptions: [
+      {
+        id: "pencil-case",
+        label: "Use my pouch",
+        description: "Make high-five groups with desk treasures.",
+        materials: ["15 paper clips, mini erasers, coins, or caps", "A clear desk or notebook"],
+        visionHint:
+          "Count each individual, clearly separated desk item as one counter. In the result, count separated groups, items per group, and the total.",
+        evidence: {
+          setup: {
+            title: "Gather 15 treasures",
+            instruction:
+              "Place 15 desk treasures in one loose group and photograph them from above.",
+            action: "Gather 15 tiny desk treasures.",
+            photoTip: "Spread them out so every treasure is visible.",
+          },
+          result: {
+            title: "Make 3 high-five groups",
+            instruction:
+              "Arrange the treasures into 3 separated groups of 5 and photograph all groups from above.",
+            action: "Make 3 groups with 5 treasures in each group.",
+            photoTip: "Leave a clear gap between each group.",
+          },
+        },
+      },
+    ],
     xp: 35,
     explainer:
-      "Skip counting by fives counts equal groups: 5, 10, 15, 20, 25.",
+      "Skip counting by fives counts equal groups: 5, 10, 15.",
   },
 ];
 
@@ -414,4 +600,25 @@ export const concepts: Concept[] = [
 
 export function getMission(id: string) {
   return missions.find((mission) => mission.id === id);
+}
+
+export function getMissionActivities(mission: Mission): MissionActivity[] {
+  return [
+    {
+      id: mission.activityMode,
+      label: mission.activityLabel,
+      description: mission.activityDescription,
+      materials: mission.materials,
+      evidence: mission.evidence,
+      visionHint: mission.visionHint,
+    },
+    ...(mission.activityOptions ?? []),
+  ];
+}
+
+export function getMissionActivity(mission: Mission, mode?: string) {
+  return (
+    getMissionActivities(mission).find((activity) => activity.id === mode) ??
+    getMissionActivities(mission)[0]
+  );
 }
