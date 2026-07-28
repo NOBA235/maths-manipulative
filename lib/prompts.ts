@@ -1,4 +1,9 @@
-import type { Mission, PromptMode } from "@/lib/missions";
+import {
+  getMissionActivity,
+  type Mission,
+  type MissionActivity,
+  type PromptMode,
+} from "@/lib/missions";
 
 type PrimitiveSchema = {
   type: "number" | "boolean" | "string";
@@ -34,30 +39,35 @@ const countingModeInstructions: Record<
     "Count the starting objects in the setup. In the result, count separated groups, objects per group, the total, and whether every group is equal.",
 };
 
-function evidenceContext(mission: Mission) {
+function evidenceContext(mission: Mission, activity: MissionActivity) {
   return [
     "You are verifying two photos of a child's hands-on math activity.",
     "The first supplied image is the SETUP PHOTO. The second supplied image is the RESULT PHOTO.",
     `Mission: ${mission.title}.`,
     `Mission overview: ${mission.instruction}`,
-    `Setup checkpoint: ${mission.evidence.setup.instruction}`,
-    `Result checkpoint: ${mission.evidence.result.instruction}`,
+    `Chosen activity: ${activity.label}. ${activity.description}`,
+    `Setup checkpoint: ${activity.evidence.setup.instruction}`,
+    `Result checkpoint: ${activity.evidence.result.instruction}`,
+    `Visual guidance: ${activity.visionHint}`,
   ].join(" ");
 }
 
-export function buildPrompt(mission: Mission) {
+export function buildPrompt(
+  mission: Mission,
+  activity = getMissionActivity(mission),
+) {
   if (
     mission.promptMode === "object-count" ||
     mission.promptMode === "array" ||
     mission.promptMode === "equal-groups" ||
     mission.promptMode === "skip-counting"
   ) {
-    return buildCountingPrompt(mission);
+    return buildCountingPrompt(mission, activity);
   }
 
   if (mission.promptMode === "fraction") {
     return [
-      evidenceContext(mission),
+      evidenceContext(mission, activity),
       "In the setup, decide whether one undivided whole is clearly visible.",
       "In the result, count the parts and judge whether their areas are roughly equal. Allow small natural folding or tearing imperfections.",
       jsonOnlyRules,
@@ -66,7 +76,7 @@ export function buildPrompt(mission: Mission) {
 
   if (mission.promptMode === "angle") {
     return [
-      evidenceContext(mission),
+      evidenceContext(mission, activity),
       "In the setup, decide whether one flat sheet of paper is clearly visible.",
       "In the result, decide whether a fold forming the angle is visible and estimate the angle between its two arms in degrees.",
       "Account for camera perspective, but do not infer an angle when both arms are not visible.",
@@ -75,7 +85,7 @@ export function buildPrompt(mission: Mission) {
   }
 
   return [
-    evidenceContext(mission),
+    evidenceContext(mission, activity),
     "In the setup, decide whether both a pencil and a ruler are visible but not yet aligned for measurement.",
     "In the result, decide whether the ruler zero is aligned with one pencil endpoint and read the pencil length in centimeters.",
     "Do not claim confidence unless ruler markings and both pencil endpoints are readable.",
@@ -83,16 +93,19 @@ export function buildPrompt(mission: Mission) {
   ].join(" ");
 }
 
-export function buildCountingPrompt(mission: Mission) {
+export function buildCountingPrompt(
+  mission: Mission,
+  activity = getMissionActivity(mission),
+) {
   return [
-    evidenceContext(mission),
+    evidenceContext(mission, activity),
     countingModeInstructions[
       mission.promptMode as Extract<
         PromptMode,
         "object-count" | "array" | "equal-groups" | "skip-counting"
       >
     ],
-    "Ignore hands, background patterns, shadows, containers, and writing when counting.",
+    "Count only the intended separate counters or large drawn marks. Ignore hands, background patterns, shadows, containers, page lines, and unrelated writing.",
     jsonOnlyRules,
   ].join(" ");
 }

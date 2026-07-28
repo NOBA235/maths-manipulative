@@ -1,6 +1,6 @@
 import { GoogleGenAI } from "@google/genai";
 import type { EvidenceVisionResult } from "@/lib/evaluate";
-import type { Mission } from "@/lib/missions";
+import type { Mission, MissionActivity } from "@/lib/missions";
 import { buildPrompt, schemaForMission } from "@/lib/prompts";
 
 export type EvidenceImageInput = {
@@ -10,6 +10,7 @@ export type EvidenceImageInput = {
 
 export type GeminiVisionInput = {
   mission: Mission;
+  activity: MissionActivity;
   setupImage: EvidenceImageInput;
   resultImage: EvidenceImageInput;
   apiKey: string;
@@ -18,6 +19,7 @@ export type GeminiVisionInput = {
 
 export async function verifyEvidenceWithGemini({
   mission,
+  activity,
   setupImage,
   resultImage,
   apiKey,
@@ -27,7 +29,7 @@ export async function verifyEvidenceWithGemini({
   const result = await genAI.models.generateContent({
     model: modelName,
     contents: [
-      buildPrompt(mission),
+      buildPrompt(mission, activity),
       "SETUP PHOTO:",
       {
         inlineData: {

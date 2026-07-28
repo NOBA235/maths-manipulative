@@ -14,6 +14,7 @@ and concept mastery are stored locally in the browser.
 - Eight grade 2-4 hands-on math missions
 - Two-page Math Buddy comic welcome with a browser-local learner display name
 - Kid-friendly challenge questions, materials lists, and action-first task steps
+- Desk Math Adventures with `Draw it` and `Use my pouch` activity kits
 - Two-checkpoint setup and result evidence capture
 - Plain-language photo tips and a two-photo readiness meter before checking
 - Native mobile camera and photo upload support
@@ -80,17 +81,18 @@ included in the browser bundle.
 
 1. On a new device, Math Buddy welcomes the learner through a two-page comic story.
 2. The learner enters a display name, saved only in the current browser.
-3. They select a mission and see one short challenge question.
-4. They gather the listed materials, then follow two numbered action steps.
-5. They take or upload a first photo of the starting setup.
-6. They perform the mathematical transformation and take a second photo of the result.
-7. They can enter an optional prediction before checking their work.
-8. The readiness meter unlocks **Check My Math** once both photos are present.
-9. The browser sends both images, the mission ID, and prediction to `/api/verify`.
-10. Gemini analyzes the labeled evidence and returns mission-specific JSON.
-11. The app scores setup and result observations independently.
-12. Both checkpoints must match before XP is awarded in `localStorage`.
-13. Ambiguous evidence requests a retake only for the affected checkpoint.
+3. They select a Desk Math Adventure and see one short challenge question.
+4. For counting missions, they choose `Draw it` or `Use my pouch` before starting.
+5. They gather the listed materials, then follow two numbered action steps.
+6. They take or upload a first photo of the starting setup.
+7. They perform the mathematical transformation and take a second photo of the result.
+8. They can enter an optional prediction before checking their work.
+9. The readiness meter unlocks **Check My Math** once both photos are present.
+10. The browser sends both images, selected activity kit, mission ID, and prediction to `/api/verify`.
+11. Gemini analyzes the labeled evidence and returns mission-specific JSON.
+12. The app scores setup and result observations independently.
+13. Both checkpoints must match before XP is awarded in `localStorage`.
+14. Ambiguous evidence requests a retake only for the affected checkpoint.
 
 ## Learner-Friendly Mission Flow
 
@@ -106,6 +108,20 @@ on the math rather than deciphering instructions:
    gaps between groups or showing every ruler mark clearly.
 5. The app shows `0/2`, `1/2`, or `2/2` photos ready, making the next action
    obvious before verification begins.
+
+## Desk Math Adventures
+
+The activity catalog is designed around supplies children already have. The
+default **Draw it** kit uses only paper and a pencil, pen, or marker. Children
+draw large, separate dots, stars, or doodles that the verifier can count from a
+clear overhead photo. Selected counting missions also offer **Use my pouch** for
+paper clips, mini erasers, coins, or similar small desk treasures.
+
+Each kit has its own materials list, child-facing instructions, photo tips, and
+vision guidance. The selected kit is sent with the two photos so Gemini knows
+whether it should verify drawn marks or physical counters. This preserves the
+same method-and-result assessment while removing the need to collect large sets
+of special manipulatives.
 
 ## Parent Center
 
@@ -137,14 +153,14 @@ final comparison against the stored target specification.
 
 | Concept | Mission | Target |
 | --- | --- | --- |
-| Addition | Combine Two Piles | Combine 7 and 8 objects to make 15 |
-| Subtraction | Leave 9 Behind | Remove objects from 15 until 9 remain |
-| Multiplication | Rows of Four | Build a 6 by 4 array |
-| Division | Four Equal Piles | Split 20 objects into 4 groups of 5 |
-| Fractions | Four Fair Parts | Make 4 roughly equal parts |
-| Geometry | Paper Right Angle | Create an angle close to 90 degrees |
-| Measurement | Measure a Pencil | Read a pencil length against a ruler |
-| Multiplication | Five, Ten, Fifteen | Make 5 groups of 5 |
+| Addition | Sticker Sheet Surprise | Make 6 stars and 4 more to fill 10 |
+| Subtraction | Eraser Rescue | Start with 10 doodles and rescue 7 |
+| Multiplication | Dot Grid Builder | Build 3 rows of 4 dots |
+| Division | Fair-Share Lunchbox | Share 12 snack dots among 3 friends |
+| Fractions | Secret Note Folds | Fold one note into 4 fair parts |
+| Geometry | Corner Detective | Create a paper right angle close to 90 degrees |
+| Measurement | Pencil Power Check | Guess, then measure a favorite pencil |
+| Multiplication | High-Five Dots | Make 3 groups of 5 and count to 15 |
 
 ## Available Scripts
 

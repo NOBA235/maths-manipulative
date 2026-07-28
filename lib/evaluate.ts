@@ -1,4 +1,8 @@
-import type { EvidenceStage, Mission } from "@/lib/missions";
+import {
+  getMissionActivity,
+  type EvidenceStage,
+  type Mission,
+} from "@/lib/missions";
 
 type BaseEvidenceVision = {
   setup_confident: boolean;
@@ -88,17 +92,23 @@ export function evaluateMission(
   mission: Mission,
   vision: EvidenceVisionResult,
   prediction?: string,
+  activity = getMissionActivity(mission),
 ): EvaluationResult {
-  const checkpoints = evaluateCheckpoints(mission, vision);
+  const missionForActivity = {
+    ...mission,
+    materials: activity.materials,
+    evidence: activity.evidence,
+  };
+  const checkpoints = evaluateCheckpoints(missionForActivity, vision);
   const status = overallStatus(checkpoints);
 
   return {
     status,
     actual: checkpoints.map((item) => item.actual).join("; then "),
     needed: checkpoints.map((item) => item.needed).join("; then "),
-    explanation: overallExplanation(mission, checkpoints, status),
+    explanation: overallExplanation(missionForActivity, checkpoints, status),
     checkpoints,
-    prediction: predictionFeedback(mission, vision, prediction),
+    prediction: predictionFeedback(missionForActivity, vision, prediction),
   };
 }
 

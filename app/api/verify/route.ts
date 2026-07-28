@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { evaluateMission } from "@/lib/evaluate";
-import { getMission } from "@/lib/missions";
+import { getMission, getMissionActivity } from "@/lib/missions";
 import { verifyEvidenceWithGemini } from "@/lib/geminiVision";
 
 export const runtime = "nodejs";
@@ -10,6 +10,7 @@ const maxImageBytes = 10 * 1024 * 1024;
 export async function POST(request: Request) {
   const formData = await request.formData();
   const missionId = String(formData.get("missionId") ?? "");
+  const activityMode = String(formData.get("activityMode") ?? "");
   const prediction = String(formData.get("prediction") ?? "");
   const setupImage = formData.get("setupImage");
   const resultImage = formData.get("resultImage");
@@ -18,6 +19,15 @@ export async function POST(request: Request) {
 
   if (!mission) {
     return NextResponse.json({ error: "Unknown mission." }, { status: 400 });
+  }
+
+  const activity = getMissionActivity(mission, activityMode || undefined);
+
+  if (activityMode && activity.id !== activityMode) {
+    return NextResponse.json(
+      { error: "That activity kit is not available for this mission." },
+      { status: 400 },
+    );
   }
 
   if (!(setupImage instanceof File) || !(resultImage instanceof File)) {
@@ -52,6 +62,7 @@ export async function POST(request: Request) {
     ]);
     const vision = await verifyEvidenceWithGemini({
       mission,
+      activity,
       setupImage: {
         imageBase64: Buffer.from(setupBuffer).toString("base64"),
         mimeType: setupImage.type || "image/jpeg",
@@ -63,7 +74,7 @@ export async function POST(request: Request) {
       apiKey,
       modelName: process.env.GEMINI_MODEL,
     });
-    const evaluation = evaluateMission(mission, vision, prediction);
+    const evaluation = evaluateMission(mission, vision, prediction, activity);
 
     return NextResponse.json({
       vision,

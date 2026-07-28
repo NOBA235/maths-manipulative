@@ -10,12 +10,15 @@ import {
   Check,
   ChevronRight,
   Divide,
+  FileText,
   Flame,
   HeartHandshake,
   Lightbulb,
   ListChecks,
   Minus,
   PieChart,
+  Paperclip,
+  Pencil,
   Plus,
   RotateCcw,
   Ruler,
@@ -42,9 +45,13 @@ import {
   type LearnerProfile,
 } from "@/lib/learner";
 import {
+  getMissionActivities,
+  getMissionActivity,
   missions,
+  type ActivityMode,
   type Concept,
   type EvidenceStage,
+  type MissionActivity,
   type Mission,
 } from "@/lib/missions";
 import {
@@ -142,6 +149,13 @@ const evidenceStageLabels: Record<EvidenceStage, string> = {
   result: "Second photo",
 };
 
+const activityIcons: Record<ActivityMode, LucideIcon> = {
+  draw: Pencil,
+  "pencil-case": Paperclip,
+  paper: FileText,
+  measure: Ruler,
+};
+
 export default function MathVerifierApp() {
   const [screen, setScreen] = useState<Screen>("missions");
   const [selectedMission, setSelectedMission] = useState<Mission | null>(null);
@@ -156,6 +170,7 @@ export default function MathVerifierApp() {
   const [result, setResult] = useState<EvaluationResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [recentXp, setRecentXp] = useState(0);
+  const [activityMode, setActivityMode] = useState<ActivityMode>("draw");
   const [learnerProfile, setLearnerProfile] =
     useState<LearnerProfile>(emptyLearnerProfile);
   const [profileReady, setProfileReady] = useState(false);
@@ -184,6 +199,7 @@ export default function MathVerifierApp() {
 
   function openMission(mission: Mission) {
     setSelectedMission(mission);
+    setActivityMode(getMissionActivity(mission).id);
     setScreen("missions");
     resetAttempt();
   }
@@ -244,6 +260,7 @@ export default function MathVerifierApp() {
 
     const body = new FormData();
     body.append("missionId", selectedMission.id);
+    body.append("activityMode", activityMode);
     body.append("prediction", prediction);
     body.append("setupImage", setupImage);
     body.append("resultImage", resultImage);
@@ -398,6 +415,7 @@ export default function MathVerifierApp() {
           >
             <MissionDetail
               mission={selectedMission}
+              activity={getMissionActivity(selectedMission, activityMode)}
               progress={progress}
               prediction={prediction}
               setPrediction={setPrediction}
@@ -408,6 +426,10 @@ export default function MathVerifierApp() {
               error={error}
               recentXp={recentXp}
               onBack={backToList}
+              onActivityChange={(nextActivityMode) => {
+                setActivityMode(nextActivityMode);
+                resetAttempt();
+              }}
               onPhotoChange={handlePhotoChange}
               onVerify={verifyEvidence}
               onRetry={retryAttempt}
@@ -1134,6 +1156,7 @@ function ExplorerBanner({
 
 function MissionDetail({
   mission,
+  activity,
   progress,
   prediction,
   setPrediction,
@@ -1144,12 +1167,14 @@ function MissionDetail({
   error,
   recentXp,
   onBack,
+  onActivityChange,
   onPhotoChange,
   onVerify,
   onRetry,
   onNext,
 }: {
   mission: Mission;
+  activity: MissionActivity;
   progress: ProgressState;
   prediction: string;
   setPrediction: (value: string) => void;
@@ -1160,12 +1185,14 @@ function MissionDetail({
   error: string | null;
   recentXp: number;
   onBack: () => void;
+  onActivityChange: (mode: ActivityMode) => void;
   onPhotoChange: (stage: EvidenceStage, file: File | undefined) => void;
   onVerify: () => void;
   onRetry: () => void;
   onNext: () => void;
 }) {
   const completed = progress.missions[mission.id]?.correct;
+  const activities = getMissionActivities(mission);
   const canVerify = Boolean(evidenceFiles.setup && evidenceFiles.result);
   const photosReady =
     Number(Boolean(evidenceFiles.setup)) + Number(Boolean(evidenceFiles.result));
@@ -1223,12 +1250,57 @@ function MissionDetail({
         </div>
 
         <div className="mt-5">
-          <h3 className="flex items-center gap-2 text-sm font-black text-ink">
+          {activities.length > 1 ? (
+            <>
+              <p className="text-xs font-black uppercase tracking-[0.14em] text-plum">
+                Pick Your Play Kit
+              </p>
+              <div
+                aria-label="Choose activity materials"
+                className="mt-2 grid grid-cols-2 gap-1 rounded-md border border-ink/10 bg-paper p-1"
+              >
+                {activities.map((option) => {
+                  const Icon = activityIcons[option.id];
+                  const active = option.id === activity.id;
+
+                  return (
+                    <button
+                      key={option.id}
+                      type="button"
+                      aria-pressed={active}
+                      onClick={() => onActivityChange(option.id)}
+                      className={`flex min-h-11 items-center justify-center gap-2 rounded-md px-2 text-xs font-black transition sm:text-sm ${
+                        active
+                          ? "bg-ink text-white shadow-sm"
+                          : "text-ink/60 hover:bg-white hover:text-ink"
+                      }`}
+                    >
+                      <Icon size={17} />
+                      {option.label}
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="mt-2 text-sm font-bold leading-5 text-ink/55">
+                {activity.description}
+              </p>
+            </>
+          ) : (
+            <p className="flex items-center gap-2 text-sm font-black text-ink/65">
+              {(() => {
+                const Icon = activityIcons[activity.id];
+                return <Icon className="text-plum" size={18} />;
+              })()}
+              Today&apos;s kit: {activity.label}
+            </p>
+          )}
+
+          <h3 className="mt-5 flex items-center gap-2 text-sm font-black text-ink">
             <ListChecks className="text-leaf" size={19} />
             Grab These First
           </h3>
           <ul className="mt-3 grid gap-2 sm:grid-cols-2">
-            {mission.materials.map((material) => (
+            {activity.materials.map((material) => (
               <li
                 key={material}
                 className="flex min-h-8 items-center gap-2 text-sm font-bold text-ink/70"
@@ -1263,14 +1335,14 @@ function MissionDetail({
                   Step {index + 1} | {evidenceStageLabels[stage]}
                 </p>
                 <h3 className="mt-1 text-sm font-black text-ink">
-                  {mission.evidence[stage].title}
+                  {activity.evidence[stage].title}
                 </h3>
                 <p className="mt-1 text-sm font-bold leading-5 text-ink/70">
-                  {mission.evidence[stage].action}
+                  {activity.evidence[stage].action}
                 </p>
                 <p className="mt-1 flex gap-1.5 text-xs leading-5 text-ink/50">
                   <Camera className="mt-0.5 shrink-0" size={14} />
-                  <span>{mission.evidence[stage].photoTip}</span>
+                  <span>{activity.evidence[stage].photoTip}</span>
                 </p>
               </div>
             </motion.div>
@@ -1335,6 +1407,7 @@ function MissionDetail({
             <EvidenceCapture
               key={stage}
               mission={mission}
+              activity={activity}
               stage={stage}
               stepNumber={index + 1}
               file={evidenceFiles[stage]}
@@ -1363,6 +1436,7 @@ function MissionDetail({
 
 function EvidenceCapture({
   mission,
+  activity,
   stage,
   stepNumber,
   file,
@@ -1371,6 +1445,7 @@ function EvidenceCapture({
   onPhotoChange,
 }: {
   mission: Mission;
+  activity: MissionActivity;
   stage: EvidenceStage;
   stepNumber: number;
   file: File | null;
@@ -1379,7 +1454,7 @@ function EvidenceCapture({
   onPhotoChange: (stage: EvidenceStage, file: File | undefined) => void;
 }) {
   const inputId = `${stage}-photo-${mission.id}`;
-  const checkpoint = mission.evidence[stage];
+  const checkpoint = activity.evidence[stage];
 
   return (
     <motion.div

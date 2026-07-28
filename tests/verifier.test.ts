@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { evaluateMission } from "../lib/evaluate";
 import { normalizeLearnerName } from "../lib/learner";
-import { missions } from "../lib/missions";
+import { getMissionActivities, getMissionActivity, missions } from "../lib/missions";
 import { buildCountingPrompt, buildPrompt, schemaForMission } from "../lib/prompts";
 import { emptyProgress, getParentSnapshot } from "../lib/progress";
 
@@ -63,7 +63,21 @@ for (const mission of missions) {
   assert.ok(mission.evidence.result.action.length > 0);
   assert.ok(mission.evidence.setup.photoTip.length > 0);
   assert.ok(mission.evidence.result.photoTip.length > 0);
+  assert.ok(mission.activityLabel.length > 0);
+  assert.ok(mission.visionHint.length > 0);
+
+  for (const activity of getMissionActivities(mission)) {
+    assert.ok(activity.materials.length > 0);
+    assert.ok(activity.evidence.setup.instruction.length > 0);
+    assert.ok(activity.evidence.result.instruction.length > 0);
+    assert.ok(activity.visionHint.length > 0);
+  }
 }
+
+assert.match(
+  buildPrompt(byId["add-7-8"], getMissionActivity(byId["add-7-8"], "pencil-case")),
+  /desk treasures/i,
+);
 
 const sharedCountingMissions = [
   byId["add-7-8"],
@@ -80,9 +94,9 @@ for (const mission of sharedCountingMissions) {
 }
 
 const correctAddition = evaluateMission(byId["add-7-8"], {
-  setup_first_count: 7,
-  setup_second_count: 8,
-  result_count: 15,
+  setup_first_count: 6,
+  setup_second_count: 4,
+  result_count: 10,
   ...confidentEvidence,
 });
 assert.equal(correctAddition.status, "correct");
@@ -92,17 +106,17 @@ assert.deepEqual(
 );
 
 const reversedAddition = evaluateMission(byId["add-7-8"], {
-  setup_first_count: 8,
-  setup_second_count: 7,
-  result_count: 15,
+  setup_first_count: 4,
+  setup_second_count: 6,
+  result_count: 10,
   ...confidentEvidence,
 });
 assert.equal(reversedAddition.status, "correct");
 
 const wrongSetupCorrectResult = evaluateMission(byId["add-7-8"], {
-  setup_first_count: 6,
-  setup_second_count: 8,
-  result_count: 15,
+  setup_first_count: 5,
+  setup_second_count: 4,
+  result_count: 10,
   ...confidentEvidence,
 });
 assert.equal(wrongSetupCorrectResult.status, "incorrect");
@@ -112,11 +126,11 @@ assert.match(
   wrongSetupCorrectResult.explanation,
   /final result is correct, but the setup does not match/i,
 );
-assert.match(wrongSetupCorrectResult.explanation, /6 and 8/);
+assert.match(wrongSetupCorrectResult.explanation, /5 and 4/);
 
 const wrongSubtractionResult = evaluateMission(byId["sub-15-to-9"], {
-  setup_count: 15,
-  result_count: 8,
+  setup_count: 10,
+  result_count: 6,
   ...confidentEvidence,
 });
 assert.equal(wrongSubtractionResult.status, "incorrect");
@@ -125,10 +139,10 @@ assert.equal(wrongSubtractionResult.checkpoints[1].status, "incorrect");
 
 assert.equal(
   evaluateMission(byId["multi-6-by-4"], {
-    setup_count: 24,
-    result_rows: 6,
+    setup_count: 12,
+    result_rows: 3,
     result_cols: 4,
-    result_total: 24,
+    result_total: 12,
     ...confidentEvidence,
   }).status,
   "correct",
@@ -136,10 +150,10 @@ assert.equal(
 
 assert.equal(
   evaluateMission(byId["divide-20-by-4"], {
-    setup_count: 20,
-    result_groups: 4,
-    result_per_group: 5,
-    result_total: 20,
+    setup_count: 12,
+    result_groups: 3,
+    result_per_group: 4,
+    result_total: 12,
     result_equal: false,
     ...confidentEvidence,
   }).status,
@@ -182,10 +196,10 @@ assert.match(measurement.prediction?.message ?? "", /1.2 cm/);
 
 assert.equal(
   evaluateMission(byId["skip-5-to-25"], {
-    setup_count: 25,
-    result_groups: 5,
+    setup_count: 15,
+    result_groups: 3,
     result_per_group: 5,
-    result_total: 25,
+    result_total: 15,
     result_equal: true,
     ...confidentEvidence,
   }).status,
@@ -193,10 +207,10 @@ assert.equal(
 );
 
 const resultRetake = evaluateMission(byId["skip-5-to-25"], {
-  setup_count: 25,
-  result_groups: 5,
+  setup_count: 15,
+  result_groups: 3,
   result_per_group: 5,
-  result_total: 24,
+  result_total: 14,
   result_equal: false,
   ...confidentEvidence,
   result_confident: false,
