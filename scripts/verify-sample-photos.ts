@@ -1,7 +1,7 @@
 import { readdir, readFile, stat } from "node:fs/promises";
 import path from "node:path";
 import { evaluateMission } from "../lib/evaluate";
-import { missions } from "../lib/missions";
+import { getMissionActivity, missions } from "../lib/missions";
 import { verifyEvidenceWithGemini } from "../lib/geminiVision";
 
 const apiKey = getApiKey();
@@ -18,6 +18,7 @@ async function main() {
   }
 
   for (const mission of missions) {
+    const activity = getMissionActivity(mission);
     const folder = path.join(root, mission.id);
     const pairs = findPhotoPairs(await safeReadDir(folder)).slice(0, 4);
 
@@ -35,6 +36,7 @@ async function main() {
       ]);
       const vision = await verifyEvidenceWithGemini({
         mission,
+        activity,
         setupImage: {
           imageBase64: setupImage.toString("base64"),
           mimeType: mimeTypeFor(setupPath),
@@ -46,7 +48,7 @@ async function main() {
         apiKey,
         modelName: process.env.GEMINI_MODEL,
       });
-      const evaluation = evaluateMission(mission, vision);
+      const evaluation = evaluateMission(mission, vision, undefined, activity);
 
       console.log(
         `${mission.id}/${pair.id}: ${evaluation.status} | actual=${evaluation.actual} | needed=${evaluation.needed}`,
