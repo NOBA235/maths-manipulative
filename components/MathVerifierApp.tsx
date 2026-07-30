@@ -75,6 +75,12 @@ type VerificationResponse = {
 
 type EvidenceFiles = Record<EvidenceStage, File | null>;
 type EvidencePreviews = Record<EvidenceStage, string | null>;
+type EvidencePreparing = Record<EvidenceStage, boolean>;
+
+const maxPreparedPhotoBytes = 1.5 * 1024 * 1024;
+const maxOriginalPhotoBytes = 30 * 1024 * 1024;
+const maxPhotoSidePixels = 1600;
+const jpegQualities = [0.82, 0.76, 0.7, 0.64, 0.58];
 
 const emptyEvidenceFiles = (): EvidenceFiles => ({
   setup: null,
@@ -86,12 +92,198 @@ const emptyEvidencePreviews = (): EvidencePreviews => ({
   result: null,
 });
 
+const emptyPreparingPhotos = (): EvidencePreparing => ({
+  setup: false,
+  result: false,
+});
+
 function revokePreviews(previews: EvidencePreviews) {
   for (const preview of Object.values(previews)) {
     if (preview) {
       URL.revokeObjectURL(preview);
     }
   }
+}
+
+async function readVerificationPayload(
+  response: Response,
+): Promise<VerificationResponse> {
+  const responseText = await response.text();
+
+  if (!responseText) {
+    return {};
+  }
+
+  try {
+    return JSON.parse(responseText) as VerificationResponse;
+  } catch {
+    return {
+      error: describeNonJsonVerificationError(response, responseText),
+    };
+  }
+}
+
+function describeNonJsonVerificationError(response: Response, text: string) {
+  const trimmedText = text.trim();
+
+  if (
+    response.status === 413 ||
+    /^request entity too large/i.test(trimmedText)
+  ) {
+    return "Those photos were too large to upload. Retake them or choose smaller images.";
+  }
+
+  if (trimmedText) {
+    return trimmedText.length > 180
+      ? `${trimmedText.slice(0, 177)}...`
+      : trimmedText;
+  }
+
+  return `Photo verification failed with status ${response.status}.`;
+}
+
+async function prepareEvidenceImage(file: File): Promise<File> {
+  if (file.size === 0) {
+    throw new Error("That photo is empty. Please take it again.");
+  }
+
+  if (file.size > maxOriginalPhotoBytes) {
+    throw new Error("Please choose a photo smaller than 30 MB.");
+  }
+
+  if (file.type && !file.type.startsWith("image/")) {
+    throw new Error("Please choose an image file.");
+  }
+
+  if (!shouldCompressEvidenceImage(file)) {
+    return file;
+  }
+
+  return compressEvidenceImage(file);
+}
+
+function shouldCompressEvidenceImage(file: File) {
+  const type = file.type.toLowerCase();
+  const name = file.name.toLowerCase();
+
+  return (
+    !type ||
+    file.size > maxPreparedPhotoBytes ||
+    type === "image/heic" ||
+    type === "image/heif" ||
+    name.endsWith(".heic") ||
+    name.endsWith(".heif")
+  );
+}
+
+async function compressEvidenceImage(file: File): Promise<File> {
+  const image = await loadImage(file);
+  const naturalWidth = image.naturalWidth || image.width;
+  const naturalHeight = image.naturalHeight || image.height;
+
+  if (!naturalWidth || !naturalHeight) {
+    throw new Error("That photo could not be read. Please take it again.");
+  }
+
+  let scale = Math.min(
+    1,
+    maxPhotoSidePixels / Math.max(naturalWidth, naturalHeight),
+  );
+  let width = Math.max(1, Math.round(naturalWidth * scale));
+  let height = Math.max(1, Math.round(naturalHeight * scale));
+  let blob = await encodeJpeg(image, width, height, jpegQualities[0]);
+
+  for (const quality of jpegQualities.slice(1)) {
+    if (blob.size <= maxPreparedPhotoBytes) {
+      break;
+    }
+    blob = await encodeJpeg(image, width, height, quality);
+  }
+
+  while (blob.size > maxPreparedPhotoBytes && Math.max(width, height) > 900) {
+    scale *= 0.85;
+    width = Math.max(1, Math.round(naturalWidth * scale));
+    height = Math.max(1, Math.round(naturalHeight * scale));
+
+    for (const quality of jpegQualities.slice(1)) {
+      blob = await encodeJpeg(image, width, height, quality);
+
+      if (blob.size <= maxPreparedPhotoBytes) {
+        break;
+      }
+    }
+  }
+
+  if (blob.size > maxPreparedPhotoBytes) {
+    throw new Error(
+      "That photo is still too large. Try retaking it from a little farther away.",
+    );
+  }
+
+  return new File([blob], toJpegFileName(file.name), {
+    type: "image/jpeg",
+    lastModified: file.lastModified || Date.now(),
+  });
+}
+
+function loadImage(file: File) {
+  return new Promise<HTMLImageElement>((resolve, reject) => {
+    const imageUrl = URL.createObjectURL(file);
+    const image = new window.Image();
+
+    image.onload = () => {
+      URL.revokeObjectURL(imageUrl);
+      resolve(image);
+    };
+    image.onerror = () => {
+      URL.revokeObjectURL(imageUrl);
+      reject(
+        new Error("That photo could not be prepared. Please take it again."),
+      );
+    };
+    image.src = imageUrl;
+  });
+}
+
+function encodeJpeg(
+  image: HTMLImageElement,
+  width: number,
+  height: number,
+  quality: number,
+) {
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+
+  const context = canvas.getContext("2d");
+
+  if (!context) {
+    throw new Error("This browser could not prepare the photo.");
+  }
+
+  context.imageSmoothingEnabled = true;
+  context.imageSmoothingQuality = "high";
+  context.drawImage(image, 0, 0, width, height);
+
+  return new Promise<Blob>((resolve, reject) => {
+    canvas.toBlob(
+      (blob) => {
+        if (blob) {
+          resolve(blob);
+        } else {
+          reject(new Error("This browser could not prepare the photo."));
+        }
+      },
+      "image/jpeg",
+      quality,
+    );
+  });
+}
+
+function toJpegFileName(name: string) {
+  const baseName = name.trim().replace(/\.[^.]+$/, "") || "evidence-photo";
+
+  return `${baseName}.jpg`;
 }
 
 const conceptStyles: Record<Concept, string> = {
@@ -166,6 +358,12 @@ export default function MathVerifierApp() {
   const [evidencePreviews, setEvidencePreviews] =
     useState<EvidencePreviews>(emptyEvidencePreviews);
   const evidencePreviewsRef = useRef<EvidencePreviews>(emptyEvidencePreviews());
+  const [preparingPhotos, setPreparingPhotos] =
+    useState<EvidencePreparing>(emptyPreparingPhotos);
+  const photoPrepareTokensRef = useRef<Record<EvidenceStage, number>>({
+    setup: 0,
+    result: 0,
+  });
   const [checking, setChecking] = useState(false);
   const [result, setResult] = useState<EvaluationResult | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -211,18 +409,28 @@ export default function MathVerifierApp() {
 
   function resetAttempt() {
     setPrediction("");
+    photoPrepareTokensRef.current = {
+      setup: photoPrepareTokensRef.current.setup + 1,
+      result: photoPrepareTokensRef.current.result + 1,
+    };
     revokePreviews(evidencePreviewsRef.current);
     const nextPreviews = emptyEvidencePreviews();
     setEvidenceFiles(emptyEvidenceFiles());
     setEvidencePreviews(nextPreviews);
+    setPreparingPhotos(emptyPreparingPhotos());
     evidencePreviewsRef.current = nextPreviews;
     setResult(null);
     setError(null);
     setRecentXp(0);
   }
 
-  function handlePhotoChange(stage: EvidenceStage, file: File | undefined) {
+  async function handlePhotoChange(stage: EvidenceStage, file: File | undefined) {
     const existingPreview = evidencePreviewsRef.current[stage];
+    const token = photoPrepareTokensRef.current[stage] + 1;
+    photoPrepareTokensRef.current = {
+      ...photoPrepareTokensRef.current,
+      [stage]: token,
+    };
 
     if (existingPreview) {
       URL.revokeObjectURL(existingPreview);
@@ -233,16 +441,73 @@ export default function MathVerifierApp() {
     setRecentXp(0);
     setEvidenceFiles((current) => ({
       ...current,
-      [stage]: file ?? null,
+      [stage]: null,
     }));
     setEvidencePreviews((current) => {
       const next = {
         ...current,
-        [stage]: file ? URL.createObjectURL(file) : null,
+        [stage]: null,
       };
       evidencePreviewsRef.current = next;
       return next;
     });
+
+    if (!file) {
+      setPreparingPhotos((current) => ({
+        ...current,
+        [stage]: false,
+      }));
+      return;
+    }
+
+    setPreparingPhotos((current) => ({
+      ...current,
+      [stage]: true,
+    }));
+
+    try {
+      const preparedFile = await prepareEvidenceImage(file);
+
+      if (photoPrepareTokensRef.current[stage] !== token) {
+        return;
+      }
+
+      const previewUrl = URL.createObjectURL(preparedFile);
+
+      setEvidenceFiles((current) => ({
+        ...current,
+        [stage]: preparedFile,
+      }));
+      setEvidencePreviews((current) => {
+        if (current[stage]) {
+          URL.revokeObjectURL(current[stage]);
+        }
+
+        const next = {
+          ...current,
+          [stage]: previewUrl,
+        };
+        evidencePreviewsRef.current = next;
+        return next;
+      });
+    } catch (caught) {
+      if (photoPrepareTokensRef.current[stage] !== token) {
+        return;
+      }
+
+      setError(
+        caught instanceof Error
+          ? caught.message
+          : "That photo could not be prepared. Please take it again.",
+      );
+    } finally {
+      if (photoPrepareTokensRef.current[stage] === token) {
+        setPreparingPhotos((current) => ({
+          ...current,
+          [stage]: false,
+        }));
+      }
+    }
   }
 
   async function verifyEvidence() {
@@ -270,7 +535,7 @@ export default function MathVerifierApp() {
         method: "POST",
         body,
       });
-      const payload = (await response.json()) as VerificationResponse;
+      const payload = await readVerificationPayload(response);
 
       if (!response.ok || !payload.evaluation) {
         throw new Error(payload.error ?? "Photo verification failed.");
@@ -421,6 +686,7 @@ export default function MathVerifierApp() {
               setPrediction={setPrediction}
               evidenceFiles={evidenceFiles}
               evidencePreviews={evidencePreviews}
+              preparingPhotos={preparingPhotos}
               checking={checking}
               result={result}
               error={error}
@@ -1162,6 +1428,7 @@ function MissionDetail({
   setPrediction,
   evidenceFiles,
   evidencePreviews,
+  preparingPhotos,
   checking,
   result,
   error,
@@ -1180,6 +1447,7 @@ function MissionDetail({
   setPrediction: (value: string) => void;
   evidenceFiles: EvidenceFiles;
   evidencePreviews: EvidencePreviews;
+  preparingPhotos: EvidencePreparing;
   checking: boolean;
   result: EvaluationResult | null;
   error: string | null;
@@ -1193,7 +1461,9 @@ function MissionDetail({
 }) {
   const completed = progress.missions[mission.id]?.correct;
   const activities = getMissionActivities(mission);
-  const canVerify = Boolean(evidenceFiles.setup && evidenceFiles.result);
+  const photosPreparing = preparingPhotos.setup || preparingPhotos.result;
+  const canVerify =
+    Boolean(evidenceFiles.setup && evidenceFiles.result) && !photosPreparing;
   const photosReady =
     Number(Boolean(evidenceFiles.setup)) + Number(Boolean(evidenceFiles.result));
 
@@ -1385,10 +1655,16 @@ function MissionDetail({
         >
           {checking ? (
             <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+          ) : photosPreparing ? (
+            <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
           ) : (
             <ScanLine size={19} />
           )}
-          {checking ? "Math Buddy Is Checking..." : "Check My Math"}
+          {checking
+            ? "Math Buddy Is Checking..."
+            : photosPreparing
+              ? "Preparing Photos..."
+              : "Check My Math"}
         </button>
         {!canVerify ? (
           <p className="mt-2 text-center text-xs font-bold text-ink/45">
@@ -1412,6 +1688,7 @@ function MissionDetail({
               stepNumber={index + 1}
               file={evidenceFiles[stage]}
               previewUrl={evidencePreviews[stage]}
+              preparing={preparingPhotos[stage]}
               checking={checking}
               onPhotoChange={onPhotoChange}
             />
@@ -1441,6 +1718,7 @@ function EvidenceCapture({
   stepNumber,
   file,
   previewUrl,
+  preparing,
   checking,
   onPhotoChange,
 }: {
@@ -1450,6 +1728,7 @@ function EvidenceCapture({
   stepNumber: number;
   file: File | null;
   previewUrl: string | null;
+  preparing: boolean;
   checking: boolean;
   onPhotoChange: (stage: EvidenceStage, file: File | undefined) => void;
 }) {
@@ -1479,16 +1758,26 @@ function EvidenceCapture({
         </div>
         <AnimatePresence mode="wait">
           <motion.span
-            key={file ? "attached" : "ready"}
+            key={preparing ? "preparing" : file ? "attached" : "ready"}
             initial={{ opacity: 0, y: -4 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 4 }}
             className={`flex shrink-0 items-center gap-1 rounded-md px-2 py-1 text-[10px] font-black uppercase tracking-[0.1em] ${
-              file ? "bg-leaf/15 text-leaf" : "bg-white/70 text-ink/45"
+              preparing
+                ? "bg-saffron/30 text-[#8b6200]"
+                : file
+                  ? "bg-leaf/15 text-leaf"
+                  : "bg-white/70 text-ink/45"
             }`}
           >
-            {file ? <Check size={13} strokeWidth={3} /> : <Camera size={13} />}
-            {file ? "Attached" : "Ready"}
+            {preparing ? (
+              <span className="h-3 w-3 animate-spin rounded-full border-2 border-current/30 border-t-current" />
+            ) : file ? (
+              <Check size={13} strokeWidth={3} />
+            ) : (
+              <Camera size={13} />
+            )}
+            {preparing ? "Preparing" : file ? "Attached" : "Ready"}
           </motion.span>
         </AnimatePresence>
       </div>
@@ -1511,10 +1800,12 @@ function EvidenceCapture({
               <Camera size={28} />
             </motion.div>
             <p className="mt-3 text-sm font-black leading-5 text-ink/70">
-              {checkpoint.action}
+              {preparing ? "Getting your photo ready..." : checkpoint.action}
             </p>
             <p className="mt-1 text-xs font-bold leading-5 text-ink/45">
-              Photo tip: {checkpoint.photoTip}
+              {preparing
+                ? "This will just take a moment."
+                : `Photo tip: ${checkpoint.photoTip}`}
             </p>
           </div>
         )}
@@ -1544,7 +1835,7 @@ function EvidenceCapture({
       <label
         htmlFor={inputId}
         className={`mx-3 mb-3 flex min-h-12 cursor-pointer items-center justify-center gap-2 rounded-md px-3 text-sm font-black shadow-button transition ${
-          checking
+          checking || preparing
             ? "pointer-events-none opacity-50"
             : stage === "setup"
               ? "bg-lake text-white hover:-translate-y-0.5 hover:bg-[#2467cb] active:translate-y-1 active:shadow-none"
@@ -1561,8 +1852,13 @@ function EvidenceCapture({
         type="file"
         accept="image/*"
         capture="environment"
+        disabled={checking || preparing}
         className="sr-only"
-        onChange={(event) => onPhotoChange(stage, event.target.files?.[0])}
+        onChange={(event) => {
+          const file = event.target.files?.[0];
+          event.currentTarget.value = "";
+          void onPhotoChange(stage, file);
+        }}
       />
     </motion.div>
   );

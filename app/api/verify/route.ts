@@ -5,10 +5,23 @@ import { verifyEvidenceWithGemini } from "@/lib/geminiVision";
 
 export const runtime = "nodejs";
 
-const maxImageBytes = 10 * 1024 * 1024;
+const maxImageBytes = 2 * 1024 * 1024;
 
 export async function POST(request: Request) {
-  const formData = await request.formData();
+  let formData: FormData;
+
+  try {
+    formData = await request.formData();
+  } catch {
+    return NextResponse.json(
+      {
+        error:
+          "The photo upload could not be read. Retake the photos or choose smaller images.",
+      },
+      { status: 400 },
+    );
+  }
+
   const missionId = String(formData.get("missionId") ?? "");
   const activityMode = String(formData.get("activityMode") ?? "");
   const prediction = String(formData.get("prediction") ?? "");
@@ -94,7 +107,7 @@ export async function POST(request: Request) {
 
 function validateImage(image: File, label: string) {
   if (image.size > maxImageBytes) {
-    return `${label} photo must be smaller than 10 MB.`;
+    return `${label} photo must be smaller than 2 MB.`;
   }
 
   if (image.type && !image.type.startsWith("image/")) {
